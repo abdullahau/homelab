@@ -20,3 +20,25 @@ services:
       - 51413:51413
       - 51413:51413/udp
     restart: unless-stopped
+
+  # https://jellyfin.org/docs/general/installation/container/
+  jellyfin:
+    image: jellyfin/jellyfin
+    container_name: jellyfin
+    ports:
+      - 8096:8096/tcp
+      - 7359:7359/udp
+    volumes:
+      - ./jellyfin/config:/config
+      - ./jellyfin/cache:/cache
+      - type: bind
+        source: /data/movies
+        target: /movies
+      - type: bind
+        source: /data/shows
+        target: /shows
+        read_only: true
+    restart: 'unless-stopped'
+    # Optional - may be necessary for docker healthcheck to pass if running in host network mode
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
