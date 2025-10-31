@@ -1,3 +1,5 @@
 .env
 adguard-home/*
+!adguard-home/.gitkeep
 jellyfin/*
+!jellyfin/.gitkeep
