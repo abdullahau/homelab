@@ -41,3 +41,28 @@ services:
     restart: 'unless-stopped'
     extra_hosts:
       - 'host.docker.internal:host-gateway'
+
+  # https://hub.docker.com/r/linuxserver/plex
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex
+    network_mode: host
+    environment:
+      - TZ=${TZ}
+      - VERSION=docker
+      - device=/dev/dri:/dev/dri
+    volumes:
+      - ./plex/library:/config
+      - /data/shows:/tv
+      - /data/movies:/movies
+    ports:
+      - 8080:80
+    restart: unless-stopped
+
+#  cloudflared:
+#    image: cloudflare/cloudflared:latest
+#    container_name: cloudflared
+#    restart: unless-stopped
+#    command: tunnel run
+#    environment:
+#      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
