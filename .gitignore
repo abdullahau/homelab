@@ -5,3 +5,5 @@ jellyfin/*
 !jellyfin/.gitkeep
 transmission/*
 !transmission/.gitkeep
+plex/*
+!plex/.gitkeep
