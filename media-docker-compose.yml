@@ -55,8 +55,6 @@ services:
       - ./plex/library:/config
       - /data/shows:/tv
       - /data/movies:/movies
-    ports:
-      - 8080:80
     restart: unless-stopped
 
 #  cloudflared:
