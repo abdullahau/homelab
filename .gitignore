@@ -7,3 +7,5 @@ transmission/*
 !transmission/.gitkeep
 plex/*
 !plex/.gitkeep
+swingmusic/*
+!swingmusic/.gitkeep
