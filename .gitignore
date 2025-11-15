@@ -5,6 +5,7 @@ jellyfin/*
 !jellyfin/.gitkeep
 transmission/*
 !transmission/.gitkeep
+!transmission/settings.json
 plex/*
 !plex/.gitkeep
 swingmusic/*
