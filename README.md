@@ -14,6 +14,20 @@ data
 └── shows
 ```
 
+## Running/Stopping a Docker Compose File
+
+```bash
+docker compose -f <compose-file-name> up -d
+
+docker compose -f <compose-file-name> down
+```
+
+```bash
+docker compose -f media-docker-compose.yml up -d
+
+docker compose -f media-docker-compose.yml down
+```
+
 ## Samsung TV Jellyfin Client
 
 1) Enable developer mode and set the Developr's Host PC IP address to your computer's IP address.
