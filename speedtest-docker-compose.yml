@@ -10,6 +10,7 @@ services:
       - PUID=${PUID}
       - PGID=${PGID}
       - APP_TIMEZONE=${TZ}
+      - DISPLAY_TIMEZONE=${TZ}
       - APP_KEY=${SPEEDTEST_KEY}
       - ADMIN_NAME=Abdullah
       - ADMIN_EMAIL=abdullah.au@outlook.com
