@@ -43,6 +43,12 @@
               url: http://ubuntu:1970/#/
               icon: sh:swing-music
               hide: false
+            adguardhome:
+              name: AdGuard Home
+              description: Ads & Trackers Blocking
+              url: http://ubuntu/
+              icon: sh:adguard-home
+              hide: false
 
     - size: full
       widgets:
