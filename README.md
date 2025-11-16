@@ -28,6 +28,17 @@ docker compose -f media-docker-compose.yml up -d
 docker compose -f media-docker-compose.yml down
 ```
 
+## Run All Docker Compose Files Together
+
+```bash
+./docker-manager.sh pull    # Pull all
+./docker-manager.sh update  # Pull & Restart all
+./docker-manager.sh up      # Start all
+./docker-manager.sh down    # Stop all
+./docker-manager.sh restart # Restart all
+./docker-manager.sh status  # Check status
+```
+
 ## Samsung TV Jellyfin Client
 
 1) Enable developer mode and set the Developr's Host PC IP address to your computer's IP address.
