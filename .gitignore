@@ -11,3 +11,5 @@ plex/*
 !plex/.gitkeep
 swingmusic/*
 !swingmusic/.gitkeep
+speedtest-tracker/*
+!speedtest-tracker/.gitkeep

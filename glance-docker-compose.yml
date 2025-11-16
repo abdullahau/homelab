@@ -3,6 +3,10 @@ services:
     container_name: glance
     image: glanceapp/glance
     restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     volumes:
       - ./glance/config:/app/config
       - ./glance/assets:/app/assets

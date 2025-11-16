@@ -39,15 +39,21 @@
               hide: false
             swingmusic:
               name: Swing Music
-              description: Music Player
+              description: Music player
               url: http://ubuntu:1970/#/
               icon: sh:swing-music
               hide: false
             adguardhome:
               name: AdGuard Home
-              description: Ads & Trackers Blocking
+              description: Ads & trackers blocking
               url: http://ubuntu/
               icon: sh:adguard-home
+              hide: false
+            speedtest-tracker:
+              name: Speedtest Tracker
+              description: Track internet speed
+              url: http://ubuntu:9080/admin
+              icon: sh:speedtest-tracker
               hide: false
 
     - size: full

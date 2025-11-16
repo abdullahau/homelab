@@ -1,0 +1,21 @@
+services:
+  speedtest-tracker:
+    image: lscr.io/linuxserver/speedtest-tracker:latest
+    restart: unless-stopped
+    container_name: speedtest-tracker
+    ports:
+      - 9080:80
+      - 9443:443
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - APP_TIMEZONE=${TZ}
+      - APP_KEY=${SPEEDTEST_KEY}
+      - ADMIN_NAME=Abdullah
+      - ADMIN_EMAIL=abdullah.au@outlook.com
+      - ADMIN_PASSWORD=123456
+      - DB_CONNECTION=sqlite
+      - SPEEDTEST_SCHEDULE=1 */1 * * *
+      - SPEEDTEST_SERVERS=17336,33712
+    volumes:
+      - ./speedtest-tracker:/config
