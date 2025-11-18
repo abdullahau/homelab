@@ -3,6 +3,7 @@ services:
     image: lscr.io/linuxserver/speedtest-tracker:latest
     restart: unless-stopped
     container_name: speedtest-tracker
+    # network_mode: host
     ports:
       - 9080:80
       - 9443:443
@@ -12,11 +13,12 @@ services:
       - APP_TIMEZONE=${TZ}
       - DISPLAY_TIMEZONE=${TZ}
       - APP_KEY=${SPEEDTEST_KEY}
-      - ADMIN_NAME=Abdullah
-      - ADMIN_EMAIL=abdullah.au@outlook.com
-      - ADMIN_PASSWORD=123456
+      - ADMIN_NAME=${SPEEDTEST_NAME}
+      - ADMIN_EMAIL=${SPEEDTEST_EMAIL}
+      - ADMIN_PASSWORD=${SPEEDTEST_PASSWORD}
       - DB_CONNECTION=sqlite
       - SPEEDTEST_SCHEDULE=1 */1 * * *
-      - SPEEDTEST_SERVERS=17336,33712
+      - SPEEDTEST_SERVERS=17336,33712,69177,1674
+      # - SPEEDTEST_INTERFACE=enxc8a362d8c536
     volumes:
       - ./speedtest-tracker:/config

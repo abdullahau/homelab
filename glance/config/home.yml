@@ -56,13 +56,19 @@
               icon: sh:speedtest-tracker
               hide: false
 
+        - type: dns-stats
+          service: adguard
+          url: http://${HOST_TS_IP}/
+          username: ${ADGUARD_USERNAME}
+          password: ${ADGUARD_PASSWORD}
+
     - size: full
       widgets:
         - type: rss
-          limit: 10
+          limit: 50
           collapse-after: 5
           style: vertical-list
-          cache: 12h
+          cache: 2d
           feeds:
             - url: https://www.bloomberg.com/authors/ARbTQlRLRjE/matthew-s-levine.rss
               title: Money Stuff - Matt Levine
