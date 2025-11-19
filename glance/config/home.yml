@@ -1,8 +1,9 @@
 - name: Home
-  hide-desktop-navigation: true
+  hide-desktop-navigation: false
   columns:
     - size: small
       widgets:
+
         - type: calendar
           first-day-of-week: monday
 
@@ -10,6 +11,34 @@
           servers:
             - type: local
               name: Ubuntu           
+
+        - type: dns-stats
+          service: adguard
+          url: http://${HOST_TS_IP}/
+          username: ${ADGUARD_USERNAME}
+          password: ${ADGUARD_PASSWORD}
+
+        - type: bookmarks
+          groups:
+            - title: Admin
+              color: 10 70 50
+              links: 
+              - title: Tailscale Admin Console
+                url: https://login.tailscale.com/admin/machines
+              - title: GitHub - abdullahau
+                url: https://github.com/abdullahau
+            - title: News
+              color: 200 50 50
+              links:
+              - title: Biztoc
+                url: https://biztoc.com/
+              - title: Google News
+                url: https://news.google.com/home?hl=en-US&gl=US&ceid=US:en
+              - title: Financial Times
+                url: https://www.ft.com/
+
+    - size: full
+      widgets:
 
         - type: docker-containers
           containers:
@@ -55,15 +84,7 @@
               url: http://ubuntu:9080/admin
               icon: sh:speedtest-tracker
               hide: false
-
-        - type: dns-stats
-          service: adguard
-          url: http://${HOST_TS_IP}/
-          username: ${ADGUARD_USERNAME}
-          password: ${ADGUARD_PASSWORD}
-
-    - size: full
-      widgets:
+      
         - type: rss
           limit: 50
           collapse-after: 5
@@ -75,7 +96,7 @@
             - url: https://aswathdamodaran.blogspot.com/feeds/posts/default
               title: Musings on Markets - Aswath Damodaran
             - url: https://adamtooze.substack.com/feed
-              title: Adam Tooze
+              title: Chartbook - Adam Tooze
             - url: https://www.ft.com/alphaville?format=rss
               title: FT Alphaville
 
@@ -115,6 +136,7 @@
 
     - size: small
       widgets:
+
         - type: weather
           location: Dubai, United Arab Emirates
           units: metric # alternatively "imperial"
@@ -130,6 +152,9 @@
               name: S&P 500 Growth
             - symbol: VGK
               name: FTSE Europe ETF
+
+        - type: repository
+          repository: abdullahau/homelab
 
         - type: repository
           repository: abdullahau/dotfiles

@@ -1,6 +1,7 @@
 .env
 adguard-home/*
 !adguard-home/.gitkeep
+!adguard-home/confdir/AdGuardHome.yaml
 jellyfin/*
 !jellyfin/.gitkeep
 transmission/*
