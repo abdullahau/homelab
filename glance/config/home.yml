@@ -84,6 +84,18 @@
               url: http://ubuntu:9080/admin
               icon: sh:speedtest-tracker
               hide: false
+            open-webui:
+              name: Open WebUI
+              description: AI Interface
+              url: http://ubuntu:8081
+              icon: sh:open-webui
+              hide: false
+            ollama:
+              name: Ollama
+              description: Manage LLMs
+              url: http://ubuntu:11434
+              icon: sh:ollama
+              hide: false
       
         - type: rss
           limit: 50
