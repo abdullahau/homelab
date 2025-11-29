@@ -96,7 +96,7 @@
               url: http://ubuntu:11434
               icon: sh:ollama
               hide: false
-      
+
         - type: rss
           limit: 50
           collapse-after: 5
