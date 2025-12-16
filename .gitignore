@@ -9,7 +9,7 @@ transmission/*
 !transmission/settings.json
 plex/*
 !plex/.gitkeep
-swingmusic/*
-!swingmusic/.gitkeep
+navidrome/*
+!navidrome/.gitkeep
 speedtest-tracker/*
 !speedtest-tracker/.gitkeep
