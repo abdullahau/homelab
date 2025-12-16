@@ -1,0 +1,11 @@
+services:
+  # https://github.com/swingmx/swingmusic
+  swingmusic:
+    image: ghcr.io/swingmx/swingmusic:latest
+    container_name: swingmusic
+    volumes:
+      - /data/music:/music
+      - ./swingmusic/config:/config
+    ports:
+      - "1970:1970"
+    restart: unless-stopped

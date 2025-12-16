@@ -27,6 +27,8 @@
                 url: https://login.tailscale.com/admin/machines
               - title: GitHub - abdullahau
                 url: https://github.com/abdullahau
+              - title: Raindrop.io
+                url: https://app.raindrop.io
             - title: News
               color: 200 50 50
               links:
@@ -66,11 +68,11 @@
               url: http://ubuntu:9091/transmission/web/
               icon: sh:transmission
               hide: false
-            swingmusic:
-              name: Swing Music
+            navidrome:
+              name: Navidrome
               description: Music player
-              url: http://ubuntu:1970/#/
-              icon: sh:swing-music
+              url: http://ubuntu:4533/#/
+              icon: sh:navidrome
               hide: false
             adguardhome:
               name: AdGuard Home

@@ -1,0 +1,64 @@
+services:
+  # Marreta
+  marreta:
+    container_name: marreta
+    image: ghcr.io/manualdousuario/marreta:latest
+    ports:
+      - "8090:80"
+    volumes:
+      - ./app/cache:/app/cache
+      - ./app/logs:/app/logs
+    environment:
+      - SITE_NAME=Marreta
+      - SITE_DESCRIPTION=Paywall Bypass
+      - SITE_URL=http://ubuntu:8090
+      - DNS_SERVERS=1.1.1.1,8.8.8.8,195.229.241.222,213.42.20.20
+      - LANGUAGE=en
+      - LOG_LEVEL=WARNING
+      - SELENIUM_HOST=selenium-hub:4444
+      - CLEANUP_DAYS=7 # Optional
+      - PROXY_LIST=url # Optional
+    restart: unless-stopped
+  # Selenium
+  selenium-hub:
+    image: selenium/hub:4.27.0-20241204
+    container_name: selenium-hub
+    environment:
+      - SE_ENABLE_TRACING=false
+      - GRID_MAX_SESSION=10
+      - GRID_BROWSER_TIMEOUT=10
+      - GRID_TIMEOUT=10
+    depends_on:
+      - marreta
+    ports:
+      - 4442:4442
+      - 4443:4443
+      - 4444:4444
+  selenium-chromium:
+    container_name: selenium-chromium
+    image: selenium/node-chromium:4.27.0-20241204
+    shm_size: 2gb
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - SE_ENABLE_TRACING=false
+      - SE_NODE_MAX_SESSIONS=10
+      - SE_NODE_OVERRIDE_MAX_SESSIONS=true
+    entrypoint: bash -c 'SE_OPTS="--host $$HOSTNAME" /opt/bin/entry_point.sh'
+    depends_on:
+      - selenium-hub
+  selenium-firefox:
+    container_name: selenium-firefox
+    image: selenium/node-firefox:4.27.0-20241204
+    shm_size: 2gb
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - SE_ENABLE_TRACING=false
+      - SE_NODE_MAX_SESSIONS=10
+      - SE_NODE_OVERRIDE_MAX_SESSIONS=true
+    entrypoint: bash -c 'SE_OPTS="--host $$HOSTNAME" /opt/bin/entry_point.sh'
+    depends_on:
+      - selenium-hub
