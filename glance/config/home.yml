@@ -86,6 +86,12 @@
               url: http://ubuntu:9080/admin
               icon: sh:speedtest-tracker
               hide: false
+            motioneye:
+              name: MotionEye
+              description: NVR System
+              url: http://ubuntu:8765/
+              icon: sh:motioneye
+              hide: false              
             open-webui:
               name: Open WebUI
               description: AI Interface
