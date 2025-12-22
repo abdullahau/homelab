@@ -1,0 +1,15 @@
+services:
+  motioneye:
+    container_name: motioneye
+    # https://github.com/motioneye-project/motioneye/pkgs/container/motioneye
+    image: ghcr.io/motioneye-project/motioneye:latest
+    ports:
+      - "8082:8081"
+      - "8765:8765"
+    volumes:
+      - ./motioneye:/etc/motioneye
+      # - /data/footage:/var/lib/motioneye
+      - /mnt/hdd/footage:/var/lib/motioneye
+      - /etc/localtime:/etc/localtime:ro
+
+# TP-Link Tapo RTSP/Onvif Protocol Settings:  https://www.tp-link.com/ae/support/faq/2680/
