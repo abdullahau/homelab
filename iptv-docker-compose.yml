@@ -1,0 +1,38 @@
+services:
+  # https://github.com/technomancer702/nodecast-tv
+  nodecast-tv:
+    image: ghcr.io/technomancer702/nodecast-tv:latest
+    container_name: nodecast-tv
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./nodecast:/app/data
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+
+  # iptvnator-backend:
+  #   image: 4gray/iptvnator-backend:latest
+  #   ports:
+  #     - "7333:3000"
+  #   environment:
+  #     - CLIENT_URL=http://ubuntu:4333 
+  #     
+  # iptvnator-frontend: 
+  #   image: 4gray/iptvnator:latest
+  #   ports:
+  #     - "4333:80"
+  #   environment:
+  #     - BACKEND_URL=http://ubuntu:7333 
+
+  # viniplay:
+  #   image: ardovini/viniplay:latest
+  #   container_name: viniplay
+  #   ports:
+  #     - "8998:8998"
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./viniplay:/data
+  #   environment:
+  #     - SESSION_SECRET=${VINIPLAY_SESSION_SECRET}
