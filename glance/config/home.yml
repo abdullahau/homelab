@@ -91,7 +91,13 @@
               description: NVR System
               url: http://ubuntu:8765/
               icon: sh:motioneye
-              hide: false              
+              hide: false
+            nodecast-tv:
+              name: NodeCastTV
+              description: IPTV Player
+              url: http://ubuntu:3000/
+              # icon: sh:
+              hide: false
             open-webui:
               name: Open WebUI
               description: AI Interface
@@ -106,10 +112,10 @@
               hide: false
 
         - type: rss
-          limit: 50
+          limit: 70
           collapse-after: 5
           style: vertical-list
-          cache: 2d
+          cache: 5d
           feeds:
             - url: https://www.bloomberg.com/authors/ARbTQlRLRjE/matthew-s-levine.rss
               title: Money Stuff - Matt Levine
@@ -119,6 +125,20 @@
               title: Chartbook - Adam Tooze
             - url: https://www.ft.com/alphaville?format=rss
               title: FT Alphaville
+            - url: https://www.thedailyupside.com/feed/
+              title: The Daily Upside
+            - url: https://stratechery.com/feed/
+              title: Stratechery - Ben Thompson
+            - url: https://www.ben-evans.com/benedictevans/?format=rss
+              title: Benedict Evans
+            - url: http://ben-evans.com/rss
+              title: Benedict Evans
+            - url: https://rss.politico.com/morningmoney.xml
+              title: Politico - Morning Money
+            - url: https://www.thediff.co/rss/
+              title: The Diff - Byrne Hobart
+            - url: https://rss.beehiiv.com/feeds/uuk5kg8PFC.xml
+              title: Short Squeez
 
         - type: group
           widgets:
