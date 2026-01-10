@@ -13,3 +13,5 @@ navidrome/*
 !navidrome/.gitkeep
 speedtest-tracker/*
 !speedtest-tracker/.gitkeep
+ollama/*
+open-webui/*

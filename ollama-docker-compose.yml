@@ -5,7 +5,7 @@ services:
     ports:
       - "11434:11434"
     volumes:
-      - /data/ollama:/root/.ollama
+      - ./ollama:/root/.ollama
     restart: unless-stopped
 
   open-webui:
@@ -16,7 +16,7 @@ services:
     environment:
       - 'OLLAMA_BASE_URL=http://ollama:11434'
     volumes:
-      - /data/open-webui:/app/backend/data
+      - ./open-webui:/app/backend/data
     depends_on:
       - ollama
     restart: unless-stopped
