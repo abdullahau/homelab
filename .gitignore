@@ -16,3 +16,5 @@ speedtest-tracker/*
 ollama/*
 open-webui/*
 firefox-headless/*
+nodecast/*
+!nodecast/db.json
