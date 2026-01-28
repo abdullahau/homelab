@@ -15,3 +15,4 @@ speedtest-tracker/*
 !speedtest-tracker/.gitkeep
 ollama/*
 open-webui/*
+firefox-headless/*

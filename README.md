@@ -39,6 +39,10 @@ docker compose -f media-docker-compose.yml down
 ./docker-manager.sh status  # Check status
 ```
 
+## Torrent Search Engine
+
+[BT4G: Torrent Search Engine](https://bt4gprx.com/)
+
 ## Samsung TV Jellyfin Client
 
 1) Enable developer mode and set the Developr's Host PC IP address to your computer's IP address.
