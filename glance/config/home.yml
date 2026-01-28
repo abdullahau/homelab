@@ -96,7 +96,7 @@
               name: NodeCastTV
               description: IPTV Player
               url: http://ubuntu:3000/
-              # icon: sh:
+              icon: sh:nodecast-tv
               hide: false
             open-webui:
               name: Open WebUI
@@ -139,6 +139,10 @@
               title: The Diff - Byrne Hobart
             - url: https://rss.beehiiv.com/feeds/uuk5kg8PFC.xml
               title: Short Squeez
+            - url: https://rss.nytimes.com/services/xml/rss/nyt/Dealbook.xml
+              title: DealBook
+            - url: https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml
+              title: NYT Economy
 
         - type: group
           widgets:
