@@ -12,6 +12,8 @@
             - type: local
               name: Ubuntu           
 
+        - $include: speedtest-tracker.yml
+
         - type: dns-stats
           service: adguard
           url: http://${HOST_TS_IP}/
@@ -32,6 +34,8 @@
             - title: News
               color: 200 50 50
               links:
+              - title: AllToc
+                url: https://alltoc.com/
               - title: Biztoc
                 url: https://biztoc.com/
               - title: Google News
