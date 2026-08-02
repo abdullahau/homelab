@@ -1,0 +1,19 @@
+services:
+  visualdb:
+    image: visualdb/visualdb-x64:latest
+    container_name: visualdb
+
+    ports:
+      - "8090:80"
+
+    environment:
+      VDB_HOST_ID: ${VDB_HOST_ID}
+      VDB_API_KEY: ${VDB_API_KEY}
+      VDB_ENCRYPTION_KEY: ${VDB_ENCRYPTION_KEY}
+      VDB_TOKEN_SECRET: ${VDB_TOKEN_SECRET}
+      VDB_DATA_DIR: /mnt/hdd/onedrive/visualdb
+
+    volumes:
+      - /mnt/hdd/onedrive/visualdb:/data:rw
+
+    restart: always

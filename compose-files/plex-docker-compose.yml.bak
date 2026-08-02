@@ -1,0 +1,20 @@
+services:
+    # https://hub.docker.com/r/linuxserver/plex
+    plex:
+        image: lscr.io/linuxserver/plex:latest
+        container_name: plex
+        network_mode: host
+        environment:
+            - PUID=${PUID}
+            - PGID=${PGID}
+            - TZ=${TZ}
+            - VERSION=docker
+        devices:
+            - /dev/dri:/dev/dri
+        volumes:
+            - ./plex/library:/config
+            - /data/shows:/tv
+            - /data/movies:/movies
+            - /data/videos:/videos
+            - /mnt/hdd:/hdd
+        restart: unless-stopped
