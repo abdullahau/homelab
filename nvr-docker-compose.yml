@@ -1,6 +1,7 @@
 services:
   motioneye:
     container_name: motioneye
+    restart: unless-stopped
     # https://github.com/motioneye-project/motioneye/pkgs/container/motioneye
     image: ghcr.io/motioneye-project/motioneye:latest
     ports:

@@ -26,7 +26,7 @@
               color: 10 70 50
               links: 
               - title: Tailscale Admin Console
-                url: https://login.tailscale.com/admin/machines
+                url: https://console.tailscale.com/admin/machines
               - title: GitHub - abdullahau
                 url: https://github.com/abdullahau
               - title: Raindrop.io
