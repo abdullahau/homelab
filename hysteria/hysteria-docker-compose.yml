@@ -1,0 +1,18 @@
+services:
+  hysteria:
+    image: tobyxdd/hysteria:latest
+    container_name: hysteria
+    restart: unless-stopped
+    # host networking avoids docker-proxy's userspace UDP hop, which costs
+    # real throughput on a QUIC tunnel. Binds UDP 443 only; it does not touch
+    # the tailscale (ts-*) chains or the Plex DNAT rules on this box.
+    network_mode: host
+    command: server -c /etc/hysteria/config.yaml
+    volumes:
+      - ./config.yaml:/etc/hysteria/config.yaml:ro
+      - ./certs:/certs:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

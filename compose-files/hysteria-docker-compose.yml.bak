@@ -1,0 +1,10 @@
+services:
+  hysteria:
+    image: tobyxdd/hysteria:latest
+    container_name: hysteria
+    restart: unless-stopped
+    network_mode: host          # avoids docker-proxy's userspace UDP hop
+    command: server -c /etc/hysteria/config.yaml
+    volumes:
+      - ./hysteria/config.yaml:/etc/hysteria/config.yaml:ro
+      - ./hysteria/certs:/certs:ro

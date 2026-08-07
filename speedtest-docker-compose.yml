@@ -17,8 +17,17 @@ services:
       - ADMIN_EMAIL=${SPEEDTEST_EMAIL}
       - ADMIN_PASSWORD=${SPEEDTEST_PASSWORD}
       - DB_CONNECTION=sqlite
-      - SPEEDTEST_SCHEDULE=1 */1 * * *
-      - SPEEDTEST_SERVERS=17336,33712,69177,1674
+      - SPEEDTEST_SCHEDULE=0 0,6,12,18 * * *
+      # Off-net servers only — every non-e& server in the UAE (verified against
+      # the full Ookla AE list; there are 12 total, the other 6 are e&).
+      # e& hosts its own servers on-net: they report ~935/500 vs ~310/116 to
+      # everyone else, measuring e&'s internal core rather than the internet.
+      # Excluded on-net: 17336 Dubai, 33712 Sharjah, 34238 Ajman,
+      #                  34240 Fujairah, 28422 Abu Dhabi, 34239 Al Ain.
+      # Included off-net: 69177 du Dubai, 1674 du Sharjah, 69176 du Hatta
+      #                   69182 du Ras Al Khaimah, 1692 du Abu Dhabi
+      #                   61459 Melbicom Fujairah (neutral, non-telco)
+      - SPEEDTEST_SERVERS=69177,1674,69176,69182,1692,61459
       # - SPEEDTEST_INTERFACE=enxc8a362d8c536
     volumes:
       - ./speedtest-tracker:/config

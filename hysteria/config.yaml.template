@@ -1,0 +1,29 @@
+# Rendered from this template by ./render.sh -- do not edit config.yaml directly.
+listen: :443
+
+tls:
+  cert: /certs/cert.pem
+  key: /certs/key.pem
+
+auth:
+  type: password
+  password: ${HYSTERIA_PASSWORD}
+
+# Anything probing this port over HTTP/3 gets a reverse-proxied real site
+# instead of an error, so the endpoint doesn't look like a proxy.
+masquerade:
+  type: proxy
+  proxy:
+    url: https://www.bing.com/
+    rewriteHost: true
+
+# Resolve DNS locally at the VPS instead of inheriting the host's resolver.
+# Without this, /etc/resolv.conf points at Tailscale MagicDNS -> AdGuard Home
+# on the homelab in DUBAI, so every lookup makes a 256ms round trip, ad domains
+# come back as 0.0.0.0 (logged as "connection refused"), and CDNs geo-resolve
+# to UAE edges instead of US ones -- defeating the point of a US egress.
+resolver:
+  type: udp
+  udp:
+    addr: 1.1.1.1:53
+    timeout: 4s
