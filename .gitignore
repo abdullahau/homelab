@@ -10,6 +10,9 @@ open-webui/
 motioneye/
 beszel/
 tautulli/
+hysteria/.env
+hysteria/config.yaml
+hysteria/certs/
 
 nodecast/*
 !nodecast/db.json
