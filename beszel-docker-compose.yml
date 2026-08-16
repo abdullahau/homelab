@@ -21,12 +21,32 @@ services:
     # One agent per monitored machine; add the Oracle VPSs later by running
     # the agent there and pointing HUB_URL at this hub over Tailscale.
     beszel-agent:
-        image: henrygd/beszel-agent:latest
+        # :alpine (not :latest) — it is the only tag shipping smartmontools,
+        # which the S.M.A.R.T. collector shells out to. :latest is scratch-based
+        # and logs `exec: "smartctl": executable file not found in $PATH`.
+        image: henrygd/beszel-agent:alpine
         container_name: beszel-agent
         restart: unless-stopped
         # Host networking so it sees the real interfaces (enx*, tailscale0)
         # rather than the container's veth pair.
         network_mode: host
+        # Docker's default AppArmor profile blocks D-Bus, so systemd collection
+        # fails with "Sender is not authorized to send message" even once the
+        # bus socket is mounted below. The container already has docker.sock,
+        # so this is not a meaningful widening of what it can reach.
+        security_opt:
+            - apparmor:unconfined
+        # S.M.A.R.T. disk health. Base controllers only (sda/sdd), never
+        # partitions. sdc is the empty SD-card reader, so it is left out.
+        # Verified both pass SAT through: sda = APPLE SSD SM0512G,
+        # sdd = SAMSUNG HN-M101MBB inside the Transcend USB enclosure.
+        devices:
+            - /dev/sda:/dev/sda
+            - /dev/sdd:/dev/sdd
+        # smartctl issues raw ATA passthrough ioctls; both caps are required.
+        cap_add:
+            - SYS_RAWIO
+            - SYS_ADMIN
         environment:
             - LISTEN=/beszel_socket/beszel.sock
             - HUB_URL=http://localhost:8090
@@ -35,15 +55,19 @@ services:
             - TOKEN=${BESZEL_TOKEN}
             - KEY=${BESZEL_KEY}
             - TZ=${TZ}
-            # / (sda2, holds /data) is picked up automatically as the root fs.
-            # The external USB disk has to be named explicitly and bind-mounted
-            # under /extra-filesystems below.
-            - EXTRA_FILESYSTEMS=hdd
+            # NOTE: no EXTRA_FILESYSTEMS here. That variable is for *binary*
+            # installs; in Docker the /extra-filesystems/hdd bind mount below
+            # is what registers the disk. Setting both just logs
+            # "Invalid filesystem name=hdd" on every start and is ignored.
         volumes:
             - ./beszel/agent_data:/var/lib/beszel-agent
             - ./beszel/socket:/beszel_socket
             # Read-only: powers the per-container CPU/mem/net breakdown.
             - /var/run/docker.sock:/var/run/docker.sock:ro
+            # System D-Bus: powers the "Systemd Services" tab (per-unit CPU,
+            # memory, restart counts) — i.e. everything running outside Docker.
+            # Needs systemd >= 243 for ListUnitsByPatterns; host runs 255.
+            - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket:ro
             # Surfaces the USB HDD as a tracked filesystem. If the disk is not
             # mounted this binds an empty dir and simply reports ~0 usage —
             # a useful side-effect: it makes the mount-guard failure visible.
