@@ -26,8 +26,7 @@ services:
       #                  34240 Fujairah, 28422 Abu Dhabi, 34239 Al Ain.
       # Included off-net: 69177 du Dubai, 1674 du Sharjah, 69176 du Hatta
       #                   69182 du Ras Al Khaimah, 1692 du Abu Dhabi
-      #                   61459 Melbicom Fujairah (neutral, non-telco)
-      - SPEEDTEST_SERVERS=69177,1674,69176,69182,1692,61459
+      - SPEEDTEST_SERVERS=69177,1674,69176,69182,1692
       # - SPEEDTEST_INTERFACE=enxc8a362d8c536
     volumes:
       - ./speedtest-tracker:/config

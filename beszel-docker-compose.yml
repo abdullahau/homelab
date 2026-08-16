@@ -1,0 +1,50 @@
+services:
+    # Hub: web dashboard + datastore. https://beszel.dev
+    beszel:
+        image: henrygd/beszel:latest
+        container_name: beszel
+        restart: unless-stopped
+        environment:
+            # Must match the URL you actually open the dashboard on, otherwise
+            # alert emails / links point at the wrong host.
+            - APP_URL=http://homelab:8090
+            - TZ=${TZ}
+        ports:
+            - 8090:8090
+        volumes:
+            - ./beszel/data:/beszel_data
+            # Shared with the agent below so the two talk over a unix socket
+            # instead of exposing the agent's port 45876 on the network.
+            - ./beszel/socket:/beszel_socket
+
+    # Agent: collects CPU/mem/disk/net + per-container stats for THIS host.
+    # One agent per monitored machine; add the Oracle VPSs later by running
+    # the agent there and pointing HUB_URL at this hub over Tailscale.
+    beszel-agent:
+        image: henrygd/beszel-agent:latest
+        container_name: beszel-agent
+        restart: unless-stopped
+        # Host networking so it sees the real interfaces (enx*, tailscale0)
+        # rather than the container's veth pair.
+        network_mode: host
+        environment:
+            - LISTEN=/beszel_socket/beszel.sock
+            - HUB_URL=http://localhost:8090
+            # Both are shown by the hub's "Add System" dialog on first run.
+            # Stored in .env (gitignored) — see BESZEL_* entries.
+            - TOKEN=${BESZEL_TOKEN}
+            - KEY=${BESZEL_KEY}
+            - TZ=${TZ}
+            # / (sda2, holds /data) is picked up automatically as the root fs.
+            # The external USB disk has to be named explicitly and bind-mounted
+            # under /extra-filesystems below.
+            - EXTRA_FILESYSTEMS=hdd
+        volumes:
+            - ./beszel/agent_data:/var/lib/beszel-agent
+            - ./beszel/socket:/beszel_socket
+            # Read-only: powers the per-container CPU/mem/net breakdown.
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+            # Surfaces the USB HDD as a tracked filesystem. If the disk is not
+            # mounted this binds an empty dir and simply reports ~0 usage —
+            # a useful side-effect: it makes the mount-guard failure visible.
+            - /mnt/hdd:/extra-filesystems/hdd:ro

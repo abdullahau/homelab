@@ -27,6 +27,8 @@
               links: 
               - title: Tailscale Admin Console
                 url: https://console.tailscale.com/admin/machines
+              - title: Home Router Admin Panel
+                url: https://homelab.napoleon-alkaline.ts.net:8443/Home.html
               - title: GitHub - abdullahau
                 url: https://github.com/abdullahau
               - title: Raindrop.io
@@ -51,67 +53,84 @@
             glance:
               name: Glance
               description: Dashboard
-              url: http://ubuntu:8080/
+              url: http://homelab:8080/
               icon: sh:glance
               hide: false
             jellyfin:
               name: Jellyfin
               description: Multimedia server
-              url: http://ubuntu:8096/web/#/home
+              url: http://homelab:8096/web/#/home
               icon: sh:jellyfin
               hide: false
             plex:
               name: Plex
               description: Multimedia server
-              url: http://ubuntu:32400/web/index.html#!/
+              url: http://homelab:32400/web/index.html#!/
               icon: sh:plex
               hide: false
             transmission:
               name: Transmission
               description: BitTorrent client
-              url: http://ubuntu:9091/transmission/web/
+              url: http://homelab:9091/transmission/web/
               icon: sh:transmission
               hide: false
             navidrome:
               name: Navidrome
               description: Music player
-              url: http://ubuntu:4533/#/
+              url: http://homelab:4533/#/
               icon: sh:navidrome
               hide: false
             adguardhome:
               name: AdGuard Home
               description: Ads & trackers blocking
-              url: http://ubuntu/
+              url: http://homelab/
               icon: sh:adguard-home
               hide: false
             speedtest-tracker:
               name: Speedtest Tracker
               description: Track internet speed
-              url: http://ubuntu:9080/admin
+              url: http://homelab:9080/admin
               icon: sh:speedtest-tracker
               hide: false
             motioneye:
               name: MotionEye
               description: NVR System
-              url: http://ubuntu:8765/
+              url: http://homelab:8765/
               icon: sh:motioneye
               hide: false
             nodecast-tv:
               name: NodeCastTV
               description: IPTV Player
-              url: http://ubuntu:3000/
+              url: http://homelab:3000/
               icon: sh:nodecast-tv
+              hide: false
+            beszel:
+              name: Beszel
+              description: Resource monitoring
+              url: http://homelab:8090/
+              icon: sh:beszel
+              hide: false
+            beszel-agent:
+              name: Beszel Agent
+              description: Metrics collector
+              icon: sh:beszel
+              hide: true
+            tautulli:
+              name: Tautulli
+              description: Plex activity & stats
+              url: http://homelab:8181/
+              icon: sh:tautulli
               hide: false
             open-webui:
               name: Open WebUI
               description: AI Interface
-              url: http://ubuntu:8081
+              url: http://homelab:8081
               icon: sh:open-webui
               hide: false
             ollama:
               name: Ollama
               description: Manage LLMs
-              url: http://ubuntu:11434
+              url: http://homelab:11434
               icon: sh:ollama
               hide: false
 
