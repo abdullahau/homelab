@@ -55,10 +55,6 @@ services:
             - TOKEN=${BESZEL_TOKEN}
             - KEY=${BESZEL_KEY}
             - TZ=${TZ}
-            # NOTE: no EXTRA_FILESYSTEMS here. That variable is for *binary*
-            # installs; in Docker the /extra-filesystems/hdd bind mount below
-            # is what registers the disk. Setting both just logs
-            # "Invalid filesystem name=hdd" on every start and is ignored.
         volumes:
             - ./beszel/agent_data:/var/lib/beszel-agent
             - ./beszel/socket:/beszel_socket
