@@ -36,13 +36,25 @@ services:
         # so this is not a meaningful widening of what it can reach.
         security_opt:
             - apparmor:unconfined
-        # S.M.A.R.T. disk health. Base controllers only (sda/sdd), never
-        # partitions. sdc is the empty SD-card reader, so it is left out.
-        # Verified both pass SAT through: sda = APPLE SSD SM0512G,
-        # sdd = SAMSUNG HN-M101MBB inside the Transcend USB enclosure.
+        # S.M.A.R.T. disk health. Base controllers only, never partitions. The
+        # SD-card reader is left out (empty). Verified both pass SAT through:
+        # the APPLE SSD SM0512G, and the SAMSUNG HN-M101MBB inside the Transcend
+        # USB enclosure.
+        #
+        # Addressed by /dev/disk/by-id (drive serial) rather than /dev/sdX: the
+        # kernel's enumeration order is not stable. The 2026-08-17 reboot moved
+        # the USB disk sdd -> sdb, and the hardcoded /dev/sdd made dockerd refuse
+        # to create the container at all (exit 128, "error gathering device
+        # information") — which `restart: unless-stopped` cannot retry, because
+        # the failure is in device setup before the process ever starts.
+        # NOT by-path (encodes the USB port, breaks on replug) and NOT the
+        # usb-StoreJet_Transcend-0:0 alias (the colons collide with compose's
+        # own host:container:mode splitting -> "bad mode specified").
+        # The container-side names are fixed so `smartctl --scan` finds them
+        # regardless of what the host calls the disks on a given boot.
         devices:
-            - /dev/sda:/dev/sda
-            - /dev/sdd:/dev/sdd
+            - /dev/disk/by-id/ata-APPLE_SSD_SM0512G_S29ANYAH206105:/dev/sda
+            - /dev/disk/by-id/ata-SAMSUNG_HN-M101MBB_S2RXJ9BBA06779:/dev/sdb
         # smartctl issues raw ATA passthrough ioctls; both caps are required.
         cap_add:
             - SYS_RAWIO
