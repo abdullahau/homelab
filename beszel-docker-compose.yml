@@ -52,6 +52,12 @@ services:
         # own host:container:mode splitting -> "bad mode specified").
         # The container-side names are fixed so `smartctl --scan` finds them
         # regardless of what the host calls the disks on a given boot.
+        #
+        # These paths encode the DRIVE SERIAL, so swapping the disk in the
+        # Transcend caddy (or replacing the SSD) requires updating the serial
+        # here — otherwise dockerd refuses to create the container and ALL host
+        # monitoring stops, not just this disk's S.M.A.R.T. Get the new value
+        # from `ls -l /dev/disk/by-id/` (pick a colon-free name).
         devices:
             - /dev/disk/by-id/ata-APPLE_SSD_SM0512G_S29ANYAH206105:/dev/sda
             - /dev/disk/by-id/ata-SAMSUNG_HN-M101MBB_S2RXJ9BBA06779:/dev/sdb
