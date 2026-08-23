@@ -1,7 +1,7 @@
 services:
     # https://jellyfin.org/docs/general/installation/container/
     jellyfin:
-        image: jellyfin/jellyfin
+        image: jellyfin/jellyfin:latest
         container_name: jellyfin
         ports:
             - 8096:8096/tcp
@@ -15,10 +15,11 @@ services:
             - type: bind
               source: /data/shows
               target: /shows
-              read_only: true
             - type: bind
               source: /mnt/hdd
               target: /hdd
+        # No /dev/dri: transcodes run in software. Keep client bitrate caps
+        # unlimited so clients direct play instead.
         restart: 'unless-stopped'
         extra_hosts:
             - 'host.docker.internal:host-gateway'
