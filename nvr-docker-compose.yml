@@ -4,12 +4,10 @@ services:
     image: bluenviron/mediamtx:latest
     container_name: mediamtx
     restart: unless-stopped
-    # uid 1000 matches mediamtx-connect, and keeps the HDD free of root-owned files
     user: "1000:1000"
     environment:
       - MTX_RTSPTRANSPORTS=tcp
       - MTX_WEBRTCADDITIONALHOSTS=192.168.0.100
-      # no TZ: this image has no zoneinfo db, so TZ silently falls back to UTC
     ports:
       - 8554:8554 # RTSP
       - 8888:8888 # HLS
