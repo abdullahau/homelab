@@ -1,16 +1,47 @@
 services:
-  motioneye:
-    container_name: motioneye
+  # TP-Link Tapo RTSP/Onvif Protocol Settings:  https://www.tp-link.com/ae/support/faq/2680/
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    container_name: mediamtx
     restart: unless-stopped
-    # https://github.com/motioneye-project/motioneye/pkgs/container/motioneye
-    image: ghcr.io/motioneye-project/motioneye:latest
+    # uid 1000 matches mediamtx-connect, and keeps the HDD free of root-owned files
+    user: "1000:1000"
+    environment:
+      - MTX_RTSPTRANSPORTS=tcp
+      - MTX_WEBRTCADDITIONALHOSTS=192.168.0.100
+      # no TZ: this image has no zoneinfo db, so TZ silently falls back to UTC
     ports:
-      - "8082:8081"
-      - "8765:8765"
+      - 8554:8554 # RTSP
+      - 8888:8888 # HLS
+      - 8889:8889 # WebRTC
+      - 8189:8189/udp # WebRTC ICE
+      - 9996:9996 # playback API
+      # 9997 (control API) stays unpublished - it can rewrite config
     volumes:
-      - ./motioneye:/etc/motioneye
-      # - /data/footage:/var/lib/motioneye
-      - /mnt/hdd/footage:/var/lib/motioneye
+      - ./mediamtx/mediamtx.yml:/mediamtx.yml:ro
+      - /mnt/hdd/footage/recordings:/recordings
       - /etc/localtime:/etc/localtime:ro
 
-# TP-Link Tapo RTSP/Onvif Protocol Settings:  https://www.tp-link.com/ae/support/faq/2680/
+  # https://github.com/bcanfield/mediamtx-connect
+  mediamtx-connect:
+    image: bcanfield/mediamtx-connect:latest
+    container_name: mediamtx-connect
+    restart: unless-stopped
+    depends_on:
+      - mediamtx
+    # these env vars seed the first boot only; mediamtx/data/config.json wins
+    # afterwards. To re-apply, delete config.json and recreate the container.
+    environment:
+      - BACKEND_SERVER_MEDIAMTX_URL=http://mediamtx
+      - REMOTE_MEDIAMTX_URL=http://192.168.0.100 # browser-facing, must be the host IP
+      - MEDIAMTX_API_PORT=9997
+      - MEDIAMTX_RECORDINGS_DIR=/recordings
+      - MEDIAMTX_SCREENSHOTS_DIR=/screenshots
+      - TZ=Asia/Dubai
+    ports:
+      - 3000:3000
+    volumes:
+      - /mnt/hdd/footage/recordings:/recordings
+      - /mnt/hdd/footage/screenshots:/screenshots
+      - ./mediamtx/data:/data
+      - /etc/localtime:/etc/localtime:ro

@@ -17,3 +17,6 @@ hysteria/certs/
 
 nodecast/*
 !nodecast/db.json
+
+mediamtx/*
+!mediamtx/mediamtx.yml
