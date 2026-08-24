@@ -19,7 +19,7 @@ services:
             - ./plex/library/Library/Application Support/Plex Media Server/Logs:/plex_logs:ro
         # Plex runs with network_mode: host, so from this bridge container it is
         # reachable at the host's LAN IP. During setup enter:
-        #   Plex IP/Hostname: 192.168.0.100    Port: 32400    SSL: off
+        #   Plex IP/Hostname: the value of HOST_LAN_IP    Port: 32400    SSL: off
         # (Do NOT use "localhost" — that resolves inside this container.)
         extra_hosts:
-            - "plexserver:192.168.0.100"
+            - "plexserver:${HOST_LAN_IP}"

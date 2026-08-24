@@ -1,102 +1,118 @@
 # Homelab
 
-## `/data` folder structure:
+Each service has its own top-level `*-docker-compose.yml`. `docker-manager.sh`
+drives them all.
+
+## Configuration and secrets
+
+Secrets live in `.env`, which is never committed. Compose reads it automatically
+for `${VAR}` interpolation.
+
+Two ways a config file gets its values:
+
+| Method | Used by | How |
+| --- | --- | --- |
+| Native `${VAR}` | Glance | Glance expands env vars itself. Pass the vars in the compose `environment:` block. |
+| Template + render | MediaMTX | Track `*.template`, render the real file from `.env`. |
+
+Render every template after changing `.env`:
+
+```bash
+./docker-manager.sh render     # or: ./scripts/render.sh
+```
+
+`scripts/render.sh` walks the repo for `*.template` and skips any directory
+holding its own `render.sh`.
+
+Rendered files (`mediamtx/mediamtx.yml`) are gitignored. Edit the template.
+
+### First run on a new machine
+
+```bash
+cp .env.example .env    # then fill in every value
+./scripts/render.sh
+./scripts/install-hooks.sh
+./docker-manager.sh up
+```
+
+## `/data` folder structure
 
 ```bash
 data
 ├── books
 ├── downloads
-│   ├── completed
-│   ├── incomplete
-│   └── torrents
+│   ├── completed
+│   ├── incomplete
+│   └── torrents
 ├── movies
 ├── music
 └── shows
 ```
 
-## Running/Stopping a Docker Compose File
+Bulk media also lives on the external USB disk at `/mnt/hdd`.
+
+## Running services
 
 ```bash
-docker compose -f <compose-file-name> up -d
-
-docker compose -f <compose-file-name> down
+./docker-manager.sh up       # start all
+./docker-manager.sh down     # stop all
+./docker-manager.sh pull     # pull images
+./docker-manager.sh update   # pull, then restart
+./docker-manager.sh restart  # down, then up
+./docker-manager.sh status   # ps for each file
+./docker-manager.sh logs     # last 50 lines each
+./docker-manager.sh render   # re-render templates
 ```
+
+One service at a time:
 
 ```bash
-docker compose -f media-docker-compose.yml up -d
-
-docker compose -f media-docker-compose.yml down
+docker compose -f plex-docker-compose.yml up -d
+docker compose -f plex-docker-compose.yml down
 ```
 
-## Run All Docker Compose Files Together
+> `hysteria/hysteria-docker-compose.yml` runs on the Oracle VPS, not here.
+> `docker-manager.sh` globs top level only, so it never starts.
 
-```bash
-./docker-manager.sh pull    # Pull all
-./docker-manager.sh update  # Pull & Restart all
-./docker-manager.sh up      # Start all
-./docker-manager.sh down    # Stop all
-./docker-manager.sh restart # Restart all
-./docker-manager.sh status  # Check status
-```
-
-## Monitoring
+## Services
 
 | Service | URL | Purpose |
 | --- | --- | --- |
-| Beszel | <http://homelab:8090> | Host + per-container CPU / memory / disk / network |
-| Tautulli | <http://homelab:8181> | Plex activity, watch history, direct play vs transcode |
+| Glance | <http://homelab:8080> | Dashboard |
+| AdGuard Home | <http://homelab> | DNS, ad and tracker blocking |
+| Plex | <http://homelab:32400> | Media server |
+| Jellyfin | <http://homelab:8096> | Media server |
+| Navidrome | <http://homelab:4533> | Music |
+| Transmission | <http://homelab:9091> | BitTorrent |
+| MediaMTX | <http://homelab:3000> | NVR, camera recording |
+| Beszel | <http://homelab:8090> | Host and container metrics |
+| Tautulli | <http://homelab:8181> | Plex activity and history |
+| Speedtest Tracker | <http://homelab:9080/admin> | Line speed history |
 
-Beszel's **agent** needs credentials before it will start. Bring up the hub
-first, create the account, click **Add System**, copy the token and public key
-into `BESZEL_TOKEN` / `BESZEL_KEY` in `.env`, then:
+### Notes
 
-```bash
-docker compose -f beszel-docker-compose.yml up -d
-```
+**AdGuard** uses `network_mode: host` so it sees real client IPs. It binds only
+`53` (tcp+udp) and `80`. A `ports:` block would be ignored.
 
-Tautulli's setup wizard asks for the Plex server. Because Plex runs with
-`network_mode: host`, enter `192.168.0.100` / port `32400` / SSL off — not
-`localhost`.
+**Beszel's agent** needs credentials before it starts. Bring up the hub first,
+create the account, click **Add System**, copy the token and key into
+`BESZEL_TOKEN` / `BESZEL_KEY` in `.env`, then start the agent.
 
-## Pre-Encoded Plex Versions
+**Tautulli** asks for the Plex server during setup. Plex runs with
+`network_mode: host`, so enter the value of `HOST_LAN_IP`, port `32400`, SSL
+off. Do not use `localhost`.
 
-`transcode/plex-versions.sh` builds an H.264 companion file next to any source
-that will not Direct Play. Plex collapses multiple files in one movie folder into
-a single item with several **Versions** and serves whichever suits the client, so
-it never has to transcode live — which matters here because this Broadwell iGPU
-cannot hardware-decode 10-bit HEVC.
+**MediaMTX** records continuously and keeps 14 days. Camera credentials come
+from `CAMERA_USER` / `CAMERA_PASSWORD` / `CAMERA_HOST` in `.env`. Viewing is
+restricted to the LAN, the tailnet, and the `mediamtx-connect` container.
 
-A companion is built when the source trips any of:
-
-- video codec is HEVC / AV1 / VC-1 / MPEG-2 / MPEG-4 (H.264 is the baseline that
-  browsers, older smart TVs and Chromecast all decode),
-- pixel format is over 8-bit (Main 10 fails on many clients that do handle HEVC),
-- frame is larger than the target box.
-
-Files that trip none of these already Direct Play and are left alone; `-f`
-overrides. Output is H.264 High@4.1, 8-bit, AAC stereo, SDR.
-
-```bash
-cd transcode
-./plex-versions.sh -n /data/movies /mnt/hdd/movies   # dry run: show decisions
-./plex-versions.sh "/mnt/hdd/movies/Some Movie (2023) [2160p] ..."
-./plex-versions.sh -p 720p /data/movies              # smaller profile
-```
-
-Throughput on this host: ~1.2x real time for SDR sources, ~0.35x for HDR ones
-(the tonemap runs in software). Run it overnight.
-
-> **Note**: Plex's own **Optimize** feature does the same job, but the server's
-> `/media/subscriptions` endpoint returns 401 without a Plex Pass — this account
-> has `myPlexSubscription="0"`, so that route is unavailable.
-
-## Torrent Search Engine
+## Torrent search
 
 [BT4G: Torrent Search Engine](https://bt4gprx.com/)
 
-## Samsung TV Jellyfin Client
+## Samsung TV Jellyfin client
 
-1) Enable developer mode and set the Developr's Host PC IP address to your computer's IP address.
+1) Enable developer mode and set the Developer's Host PC IP address to your computer's IP address.
     - On the TV, open the "Smart Hub".
     - Select the "Apps" panel.
     - In the "Apps" panel, enter "12345" using the remote control or the on-screen number keypad.
@@ -106,7 +122,7 @@ Throughput on this host: ~1.2x real time for SDR sources, ~0.35x for HDR ones
     - Reboot the TV.
     - When you open the "Apps" panel after the reboot, "Develop Mode" is marked at the top of the screen.
 
-2) Using TizenBrew Device Manager`:
+2) Using TizenBrew Device Manager:
     - Download the latest TizenBrew Device Manager for your OS from the [releases page](https://github.com/reisxd/tizenbrew-device-manager/releases)
     - Install / Run TizenBrew Device Manager, go into "Connect Device" page and connect to your TV using its LAN IP address.
     - Download the right Jellyfin package from the [releases page](https://github.com/jeppevinkel/jellyfin-tizen-builds/releases)
@@ -114,4 +130,4 @@ Throughput on this host: ~1.2x real time for SDR sources, ~0.35x for HDR ones
 3) Using Docker:
     - Run `docker run --rm georift/install-jellyfin-tizen <samsung tv ip>`
     - Or run with optional arguments `docker run --rm georift/install-jellyfin-tizen <samsung tv ip> [build option] [tag url] [certificate password]`
-    - More installation instructions can be found on [Georift's](https://tim.wants.coffee/posts/install-jellyfin-on-a-samsung-tv/) Github [repo](https://github.com/Georift/install-jellyfin-tizen). 
+    - More installation instructions can be found on [Georift's](https://tim.wants.coffee/posts/install-jellyfin-on-a-samsung-tv/) Github [repo](https://github.com/Georift/install-jellyfin-tizen).

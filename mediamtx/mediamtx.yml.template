@@ -1,0 +1,67 @@
+# Continuous NVR recording. No motion detection, no transcoding - MediaMTX has
+# no codec, so it only remuxes. Resolution costs no CPU.
+#
+# Rendered from this template by ../scripts/render.sh -- do not edit mediamtx.yml.
+
+logLevel: info
+
+api: yes # mediamtx-connect will not start without this
+apiAddress: :9997
+
+playback: yes
+playbackAddress: :9996
+
+rtsp: yes
+rtspAddress: :8554
+rtspTransports: [tcp]
+
+hls: yes
+hlsAddress: :8888
+
+webrtc: yes
+webrtcAddress: :8889
+
+metrics: no
+rtmp: no
+srt: no
+moq: no # unused, and it writes a TLS cert to the working dir
+
+authInternalUsers:
+  # Nothing publishes to this server - the camera is pulled by paths.*.source.
+  - user: any
+    ips: ['127.0.0.1', '::1']
+    permissions:
+      - action: publish
+
+  # Viewers: LAN, tailnet, and the mediamtx-connect container.
+  - user: any
+    ips: ['192.168.0.0/24', '100.64.0.0/10', '172.18.0.0/16', '127.0.0.1', '::1']
+    permissions:
+      - action: read
+      - action: playback
+
+  # Stock config grants 'api' to localhost only, which 401s mediamtx-connect.
+  - user: any
+    ips: ['127.0.0.1', '::1', '172.18.0.0/16']
+    permissions:
+      - action: api
+      - action: metrics
+      - action: pprof
+
+pathDefaults:
+  # 'automatic' tries UDP first and loses RTP packets over WiFi, which aborts
+  # the recorder and cuts short segments.
+  rtspTransport: tcp
+
+  record: yes
+  # stock layout - mediamtx-connect parses it to build the recordings browser
+  recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S-%f
+  recordFormat: fmp4
+  recordPartDuration: 1s # worst-case loss on an unclean shutdown
+  recordSegmentDuration: 1h
+  recordDeleteAfter: 14d # ~5.4 GB/day at 1080p = ~76 GB
+
+paths:
+  living-room:
+    source: rtsp://${CAMERA_USER}:${CAMERA_PASSWORD}@${CAMERA_HOST}:554/stream1
+    sourceOnDemand: no # 'yes' stops recording whenever nobody is watching

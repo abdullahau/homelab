@@ -3,6 +3,9 @@ services:
     jellyfin:
         image: jellyfin/jellyfin:latest
         container_name: jellyfin
+        # Runs as 1000:1000 like navidrome, not root. Media dirs are owned by
+        # the same uid, so reads work unchanged.
+        user: "${PUID}:${PGID}"
         ports:
             - 8096:8096/tcp
             - 7359:7359/udp

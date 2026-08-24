@@ -7,6 +7,12 @@ services:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
+      # Referenced as ${VAR} inside glance/config/*.yml. Glance refuses to
+      # start if any of these is missing.
+      - HOST_TS_IP=${HOST_TS_IP}
+      - ADGUARD_USERNAME=${ADGUARD_USERNAME}
+      - ADGUARD_PASSWORD=${ADGUARD_PASSWORD}
+      - SPEEDTEST_API_TOKEN=${SPEEDTEST_API_TOKEN}
     volumes:
       - ./glance/config:/app/config
       - ./glance/assets:/app/assets
@@ -14,4 +20,3 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro # mount docker socket to use the docker containers widget
     ports:
       - 8080:8080
-    env_file: .env

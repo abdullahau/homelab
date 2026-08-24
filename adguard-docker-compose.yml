@@ -3,44 +3,15 @@ services:
     image: adguard/adguardhome
     container_name: adguardhome
     restart: unless-stopped
+    # Host networking so AdGuard sees real client IPs. Under bridge every query
+    # would appear to come from the docker gateway, breaking per-client stats
+    # and rules. It also makes any `ports:` block a no-op, so there is none.
+    #
+    # Live bindings (AdGuardHome.yaml): 0.0.0.0:53 tcp+udp (DNS), 0.0.0.0:80
+    # (web UI). TLS, DHCP and DNSCrypt are disabled, so 443/853/67/68 are idle.
     network_mode: host
     environment:
         - TZ=${TZ}
-    ports:
-      # DNS Queries
-      - "53:53/tcp"
-      - "53:53/udp"
-
-      # DHCP
-      # Server
-      - "67:67/udp"
-      # Client
-      - "68:68/udp"
-
-      # HTTP Web Interface
-      - "80:80/tcp"
-      # HTTPS Web interface
-      - "443:443/tcp"
-      - "443:443/udp"
-
-      # AdGuard Home's API
-      - "3000:3000/tcp"
-
-      # DNS-over-TLS (DoT)
-      - "853:853/tcp"
-
-      # DNS-over-QUIC (DoQ)
-      - "784:784/udp"
-
-      # for DNS-over-DTLS (DoT)
-      - "853:853/udp"
-
-      # DNS-over-TLS (DoT)
-      - "8853:8853/udp"
-
-      # DNSCrypt
-      - "5443:5443/tcp"
-      - "5443:5443/udp"
     volumes:
-      - ./adguard-home/work:/opt/adguardhome/work  
+      - ./adguard-home/work:/opt/adguardhome/work
       - ./adguard-home/confdir:/opt/adguardhome/conf

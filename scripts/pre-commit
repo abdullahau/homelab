@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Blocks a commit that stages a secret. Installed by scripts/install-hooks.sh.
+set -euo pipefail
+
+command -v gitleaks >/dev/null || {
+    echo "pre-commit: gitleaks not found; skipping scan" >&2
+    exit 0
+}
+
+if ! gitleaks git --staged --redact --no-banner; then
+    echo >&2
+    echo "pre-commit: secret detected in staged changes - commit blocked." >&2
+    echo "Move the value into .env, or add a 'gitleaks:allow' comment if it is a false positive." >&2
+    exit 1
+fi

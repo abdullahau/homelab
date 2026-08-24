@@ -1,22 +1,37 @@
+# Deny everything, then allow config explicitly. A new service directory
+# tracks nothing until it is listed here.
+*
+!*/
+
+# Repo meta
+!.gitignore
+!README.md
+!TODO.md
+!.env.example
+
+# Compose files and tooling
+!*-docker-compose.yml
+!docker-manager.sh
+!scripts/*.sh
+!scripts/pre-commit
+
+# Templates only, never the rendered output
+!*.template
+!*.example
+
+# Tracked service config
+!glance/config/*.yml
+!glance/assets/user.css
+!compose-files/**
+!hysteria/README.md
+
+# Hard re-deny: these must never be tracked, whatever the rules above allow.
 .env
-motioneye/
-adguard-home/
-jellyfin/
-transmission/
-plex/
-navidrome/
-speedtest-tracker/
-ollama/
-open-webui/
-motioneye/
-beszel/
-tautulli/
-hysteria/.env
+**/.env
+.env.bak*
+**/certs/
+*.key
+*.pem
+mediamtx/mediamtx.yml
 hysteria/config.yaml
-hysteria/certs/
-
-nodecast/*
-!nodecast/db.json
-
-mediamtx/*
-!mediamtx/mediamtx.yml
+transmission/settings.json
