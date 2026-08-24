@@ -141,11 +141,9 @@
               title: Stratechery - Ben Thompson
             - url: https://www.ben-evans.com/benedictevans/?format=rss
               title: Benedict Evans
-            - url: http://ben-evans.com/rss
-              title: Benedict Evans
             - url: https://rss.politico.com/morningmoney.xml
               title: Politico - Morning Money
-            - url: https://www.thediff.co/rss/
+            - url: https://www.thediff.co/archive/rss/
               title: The Diff - Byrne Hobart
             - url: https://rss.beehiiv.com/feeds/uuk5kg8PFC.xml
               title: Short Squeez
@@ -153,6 +151,8 @@
               title: DealBook
             - url: https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml
               title: NYT Economy
+            - url: https://abdullah.run/atom.xml
+              title: Abdullah Mahmood
 
         - type: group
           widgets:
