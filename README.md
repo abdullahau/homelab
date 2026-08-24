@@ -108,7 +108,8 @@ restricted to the LAN, the tailnet, and the `mediamtx-connect` container.
 
 ## Torrent search
 
-[BT4G: Torrent Search Engine](https://bt4gprx.com/)
+- [BT4G: Torrent Search Engine](https://bt4gprx.com/)
+- [Magnetz](https://magnetz.eu/)
 
 ## Samsung TV Jellyfin client
 
