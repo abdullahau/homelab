@@ -1,3 +1,5 @@
+name: transmission
+
 services:
     # https://docs.linuxserver.io/images/docker-transmission/
     transmission:

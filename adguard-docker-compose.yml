@@ -1,3 +1,5 @@
+name: adguard
+
 services:
   adguardhome:
     image: adguard/adguardhome

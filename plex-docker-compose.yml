@@ -1,3 +1,5 @@
+name: plex
+
 services:
     # Official Plex image: https://github.com/plexinc/pms-docker
     plex:

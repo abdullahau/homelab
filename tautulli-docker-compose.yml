@@ -1,3 +1,5 @@
+name: tautulli
+
 services:
     # Plex activity/history monitoring: who watched what, direct play vs
     # direct stream vs transcode, bandwidth per session, client versions.

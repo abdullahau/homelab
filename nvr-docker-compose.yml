@@ -1,3 +1,5 @@
+name: nvr
+
 services:
   # TP-Link Tapo RTSP/Onvif Protocol Settings:  https://www.tp-link.com/ae/support/faq/2680/
   mediamtx:
@@ -43,3 +45,11 @@ services:
       - /mnt/hdd/footage/screenshots:/screenshots
       - ./mediamtx/data:/data
       - /etc/localtime:/etc/localtime:ro
+
+# Pinned so the mediamtx auth rules can name this subnet. Docker's auto
+# assignment changes it on every recreate, which would 401 mediamtx-connect.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16

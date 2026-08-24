@@ -1,3 +1,5 @@
+name: glance
+
 services:
   glance:
     container_name: glance

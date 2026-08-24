@@ -1,3 +1,5 @@
+name: speedtest
+
 services:
   speedtest-tracker:
     image: lscr.io/linuxserver/speedtest-tracker:latest

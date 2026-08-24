@@ -1,3 +1,5 @@
+name: jellyfin
+
 services:
     # https://jellyfin.org/docs/general/installation/container/
     jellyfin:
