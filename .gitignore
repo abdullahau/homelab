@@ -3,8 +3,6 @@
 *
 !*/
 
-adguard-home/
-
 # Repo meta
 !.gitignore
 !README.md
@@ -34,6 +32,7 @@ adguard-home/
 **/certs/
 *.key
 *.pem
+adguard-home/
 mediamtx/mediamtx.yml
 hysteria/config.yaml
 transmission/settings.json
