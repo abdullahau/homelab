@@ -28,7 +28,7 @@ services:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
-      - MYSQL_ROOT_PASSWORD=123456
+      - MYSQL_ROOT_PASSWORD=<PASSWORD>
       - MYSQL_DATABASE=booklore
       - MYSQL_USER=booklore
       - MYSQL_PASSWORD=${MARIADB_PASSWORD}

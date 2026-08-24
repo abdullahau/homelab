@@ -10,9 +10,9 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql
     environment:
-      POSTGRES_DB: paperless
-      POSTGRES_USER: paperless
-      POSTGRES_PASSWORD: paperless
+      POSTGRES_DB: <DB NAME>
+      POSTGRES_USER: <USERNAME>
+      POSTGRES_PASSWORD: <PASSWORD>
   webserver:
     image: ghcr.io/paperless-ngx/paperless-ngx:latest
     restart: unless-stopped
