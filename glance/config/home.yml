@@ -120,6 +120,17 @@
               url: http://homelab:8181
               icon: sh:tautulli
               hide: false
+            cloudflared:
+              name: Cloudflared
+              description: Cloudflare tunnel client
+              url: https://dash.cloudflare.com/
+              icon: sh:cloudflare
+              hide: false
+            caddy:
+              name: Caddy
+              description: Web server with HTTPS
+              icon: sh:caddy
+              hide: false
 
         - type: rss
           limit: 70
