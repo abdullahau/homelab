@@ -106,6 +106,78 @@ off. Do not use `localhost`.
 from `CAMERA_USER` / `CAMERA_PASSWORD` / `CAMERA_HOST` in `.env`. Viewing is
 restricted to the LAN, the tailnet, and the `mediamtx-connect` container.
 
+## Edge stack (cloudflared + Caddy)
+
+`edge-stack-docker-compose.yml` holds two containers:
+
+| Container | Job |
+| --- | --- |
+| `cloudflared` | Outbound tunnel to Cloudflare. No inbound port. |
+| `caddy` | Routes each hostname to a service. Plain HTTP only. |
+
+Cloudflare terminates TLS at the edge, so Caddy runs with `auto_https off`.
+
+### Test it locally
+
+Send a Host header to pick a route without touching the tunnel:
+
+```bash
+curl -H "Host: jellyfin.abdullah.diy" http://localhost:8081/
+```
+
+An unrouted hostname returns `404` from the catch-all block.
+
+Host port `8081` is for local tests only. `cloudflared` reaches Caddy over the
+compose network, not the host.
+
+### Connect the tunnel
+
+1. Put the tunnel token in `TUNNEL_TOKEN` in `.env`.
+2. In the Cloudflare Zero Trust dashboard, open your tunnel.
+3. Add a public hostname. Set the service to `HTTP` and `caddy:80`.
+4. Start the connector:
+
+```bash
+docker compose -f edge-stack-docker-compose.yml up -d cloudflared
+```
+
+### Check the tunnel
+
+`cloudflared` has no shell, so query it from the `caddy` container:
+
+```bash
+docker exec caddy wget -qO- http://cloudflared:20241/ready
+docker exec caddy wget -qO- http://cloudflared:20241/config
+```
+
+`ready` must report four connections. In `config`, `"version":-1` and a lone
+`http_status:503` rule mean the dashboard has pushed no route yet. The
+connector is healthy but every request gets a 503 at the edge.
+
+### Routes
+
+Both routes are commented out. Cloudflare's terms restrict streaming video
+through the CDN, so Plex and Jellyfin stay off the tunnel. Uncomment the
+blocks in `edge-stack/Caddyfile` to re-enable them.
+
+| Hostname | Origin | Why that address |
+| --- | --- | --- |
+| `plex.abdullah.diy` | `${HOST_LAN_IP}:32400` | Plex uses `network_mode: host`. No container name to resolve. |
+| `jellyfin.abdullah.diy` | `${HOST_LAN_IP}:8096` | Jellyfin is a separate compose project, so it is on another network. |
+
+Every hostname needs two things: a block in `edge-stack/Caddyfile`, and a
+public hostname in the dashboard pointing at `http://caddy:80`.
+
+Caddy resolves container names only on a shared network. For anything in
+another compose file, use `{$HOST_LAN_IP}:<port>` and pass `HOST_LAN_IP` in
+the compose `environment:` block.
+
+Reload Caddy after an edit:
+
+```bash
+docker compose -f edge-stack-docker-compose.yml restart caddy
+```
+
 ## Torrent search
 
 - [BT4G: Torrent Search Engine](https://bt4gprx.com/)

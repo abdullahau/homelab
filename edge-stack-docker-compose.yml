@@ -1,0 +1,33 @@
+name: edge-stack
+
+# Edge stack. cloudflared holds the outbound tunnel, Caddy routes each
+# public hostname to a service on this host.
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      # Token, not a config file. The public hostname -> service mapping
+      # lives in the Cloudflare Zero Trust dashboard and points at http://caddy.
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+      - TZ=${TZ}
+    depends_on:
+      - caddy
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+      # Plex and Jellyfin live outside this project, so Caddy dials the host.
+      - HOST_LAN_IP=${HOST_LAN_IP}
+    volumes:
+      - ./edge-stack/Caddyfile:/etc/caddy/Caddyfile:ro
+    ports:
+      # Local testing only. cloudflared reaches Caddy over the compose network.
+      # Host port 80 belongs to AdGuard.
+      - "8081:80"

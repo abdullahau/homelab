@@ -1,0 +1,17 @@
+{
+	auto_https off
+	admin off
+}
+
+# Disabled: Cloudflare's terms restrict streaming video through the CDN.
+# http://plex.abdullah.diy {
+# 	reverse_proxy {$HOST_LAN_IP}:32400
+# }
+
+# http://jellyfin.abdullah.diy {
+# 	reverse_proxy {$HOST_LAN_IP}:8096
+# }
+
+:80 {
+	respond "edge-stack: no route for {host}" 404
+}

@@ -20,6 +20,7 @@
 !*.example
 
 # Tracked service config
+!edge-stack/Caddyfile
 !glance/config/*.yml
 !glance/assets/user.css
 !compose-files/**

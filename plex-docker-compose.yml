@@ -1,44 +1,24 @@
 name: plex
 
 services:
-    # Official Plex image: https://github.com/plexinc/pms-docker
     plex:
         image: plexinc/pms-docker:latest
         container_name: plex
-        # Host networking: server binds directly to all host interfaces
-        # (LAN + Tailscale). No manual port mapping needed. Because of this,
-        # ADVERTISE_IP is ignored (bridge-only) and remote access over Tailscale
-        # relies on the "Custom server access URLs" already set in Preferences.xml.
+        # Binds LAN + Tailscale directly. ADVERTISE_IP is ignored, so remote
+        # access relies on "Custom server access URLs" in Preferences.xml.
         network_mode: host
-        hostname: PlexServer            # cosmetic name shown for the container/server
+        hostname: PlexServer
         environment:
-            # Reuse the existing values in .env (PUID/PGID/TZ). The official image
-            # expects PLEX_UID/PLEX_GID rather than linuxserver's PUID/PGID.
+            # The official image uses PLEX_UID/PLEX_GID, not PUID/PGID.
             - PLEX_UID=${PUID}
             - PLEX_GID=${PGID}
             - TZ=${TZ}
-            # Only needed to claim a NEW, unclaimed server. Yours is already
-            # claimed, so leave this empty. To re-claim, get a token from
-            # https://www.plex.tv/claim (valid ~4 min) and paste it here.
-            # - PLEX_CLAIM=claim-xxxxxxxxxxxxxxxxxxxx
-            #
-            # Optional: IPs allowed in without auth (maps to "List of IP addresses
-            # and networks that are allowed without auth" in Plex).
-            # - ALLOWED_NETWORKS=192.168.1.0/24,100.64.0.0/10
         devices:
-            # Intel Quick Sync iGPU for hardware transcoding. Enable afterwards in
-            # Settings > Transcoder > "Use hardware acceleration when available".
             - /dev/dri:/dev/dri
         volumes:
-            # Plex database/metadata/config. SAME internal layout as the
-            # linuxserver image, so your existing library migrates as-is.
             - ./plex/library:/config
-            # Dedicated transcode scratch dir (kept off the config/media disks).
-            # For less SSD wear you can instead use RAM:
-            #   tmpfs: - /transcode
             - ./plex/transcode:/transcode
-            # Media. Paths kept identical to the old setup so existing Plex
-            # library sections (which store absolute paths) keep resolving.
+            # Paths match the old setup so library sections keep resolving.
             - /data/shows:/tv
             - /data/movies:/movies
             - /data/videos:/videos
