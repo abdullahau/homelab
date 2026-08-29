@@ -2,16 +2,13 @@
 #
 # Remove PGS / VOBSUB subtitle tracks from Matroska files.
 #
-# Why: an image subtitle is a picture, not text. No client can render one, so
-# Plex and Jellyfin must burn it into the video, which forces a full re-encode.
-# Plex here is set to remux only and Jellyfin has no hardware encoder, so
-# selecting one fails playback outright. Deleting the tracks removes the trap.
+# An image subtitle is a picture, so the servers must burn it into the video.
+# Plex here remuxes only and Jellyfin has no encoder, so picking one kills
+# playback. Deleting the tracks removes the trap.
 #
-# On-screen text translation is protected. The script keeps an image track when
-# it carries the forced flag, or is named forced/signs/songs, AND no text
-# subtitle covers that language. It also refuses to leave a file with no
-# subtitle at all. Use --strip-all to override the first rule, --force the
-# second.
+# Keeps an image track that is forced, or named forced/signs/songs, when no text
+# subtitle covers its language. Never leaves a file with no subtitle at all.
+# --strip-all overrides the first rule, --force the second.
 #
 # Usage:
 #   strip-image-subs.sh                       # dry run over every library root
@@ -21,8 +18,8 @@
 #   strip-image-subs.sh --apply /path/to/one.mkv
 #   strip-image-subs.sh --install-deps       # install anything missing, then run
 #
-# Rewriting is a remux: no re-encode, so quality is untouched, but each file is
-# written out again. It needs free space equal to the largest file it touches.
+# A remux, not a re-encode, so quality is untouched. Needs free space equal to
+# the largest file it rewrites.
 
 set -uo pipefail
 
@@ -34,7 +31,7 @@ for arg in "$@"; do
     --strip-all) STRIP_ALL=1 ;;
     --force)     FORCE=1 ;;
     --install-deps) INSTALL_DEPS=1 ;;
-    -h|--help)   sed -n '3,26p' "$0"; exit 0 ;;
+    -h|--help)   sed -n '3,22p' "$0"; exit 0 ;;
     -*)          echo "unknown option: $arg" >&2; exit 2 ;;
     *)           ROOTS+=("$arg") ;;
   esac
@@ -44,8 +41,6 @@ done
 for r in "${ROOTS[@]}"; do
   [ -e "$r" ] || { echo "no such path: $r" >&2; exit 2; }
 done
-# --- dependency check -------------------------------------------------------
-# mkvmerge does the remux, jq reads its JSON, numfmt formats the freed bytes.
 # Report every missing tool at once rather than one per run.
 check_deps() {
   local missing_bins=() missing_pkgs=() bin pkg
@@ -91,14 +86,12 @@ while IFS= read -r -d '' f; do
   scanned=$((scanned+1))
   info=$(mkvmerge -J "$f" 2>/dev/null) || { echo "unreadable: $f" >&2; continue; }
 
-  # Does this file have any image subtitle at all?
   n_img=$(echo "$info" | jq --arg re "$IMAGE_RE" '
     [.tracks[] | select(.type=="subtitles") | select(.properties.codec_id|test($re))] | length')
   [ "${n_img:-0}" -eq 0 ] && continue
 
-  # Sidecar SRTs belonging to this file. The prefix is matched in the shell,
-  # never handed to find -name: release names contain [ ], which find would
-  # read as a glob character class and then match nothing.
+  # Match the prefix in the shell. Release names contain [ ], which find -name
+  # would read as a glob class and then match nothing.
   dir=$(dirname "$f"); base=$(basename "$f"); base=${base%.*}
   sidecars=()
   while IFS= read -r s; do
