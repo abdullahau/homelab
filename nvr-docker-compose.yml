@@ -33,7 +33,7 @@ services:
     # afterwards. To re-apply, delete config.json and recreate the container.
     environment:
       - BACKEND_SERVER_MEDIAMTX_URL=http://mediamtx
-      - REMOTE_MEDIAMTX_URL=http://${MACHINE_NAME_TS} # browser-facing; no port, the app appends :8888/:8889
+      - REMOTE_MEDIAMTX_URL=http://${MACHINE_NAME_TS}
       - MEDIAMTX_API_PORT=9997
       - MEDIAMTX_RECORDINGS_DIR=/recordings
       - MEDIAMTX_SCREENSHOTS_DIR=/screenshots
