@@ -195,12 +195,17 @@ docker compose -f edge-stack-docker-compose.yml restart caddy
     - Reboot the TV.
     - When you open the "Apps" panel after the reboot, "Develop Mode" is marked at the top of the screen.
 
-2) Using TizenBrew Device Manager:
-    - Download the latest TizenBrew Device Manager for your OS from the [releases page](https://github.com/reisxd/tizenbrew-device-manager/releases)
-    - Install / Run TizenBrew Device Manager, go into "Connect Device" page and connect to your TV using its LAN IP address.
-    - Download the right Jellyfin package from the [releases page](https://github.com/jeppevinkel/jellyfin-tizen-builds/releases)
 
-3) Using Docker:
+2) OPTION 1: Using TizenBrew Device Manager:
+    - Download the latest TizenBrew for your OS from the [releases page](https://github.com/reisxd/TizenBrew/releases)
+    - Change access permission of the script to execute (`chmod +x SCRIPT-FILENAME`)
+    - Run TizenBrew script, open `http://localhost:8091/ui/dist/index.html` in the browser.
+    - Connect to your TV through its LAN IP address
+    - Download the right Jellyfin widget package (`.wgt`) from the [releases page](https://github.com/jeppevinkel/jellyfin-tizen-builds/releases)
+    - Click `Select file to install`, select the widget package and let TizenBrew complete installation
+    - Further instruction can be found [here](https://app.notion.com/p/TizenBrew-Guide-30437864d8618033bb03e818e894fd5c)
+
+3) OPTION 2: Using Docker:
     - Run `docker run --rm georift/install-jellyfin-tizen <samsung tv ip>`
     - Or run with optional arguments `docker run --rm georift/install-jellyfin-tizen <samsung tv ip> [build option] [tag url] [certificate password]`
     - More installation instructions can be found on [Georift's](https://tim.wants.coffee/posts/install-jellyfin-on-a-samsung-tv/) Github [repo](https://github.com/Georift/install-jellyfin-tizen).
