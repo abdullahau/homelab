@@ -166,7 +166,6 @@ while IFS= read -r -d '' f; do
     if mkvmerge -q -o "$tmp" "${subargs[@]}" "$f" >/dev/null 2>&1 && [ -s "$tmp" ]; then
       # Verify the rewrite before replacing the original.
       if mkvmerge -J "$tmp" >/dev/null 2>&1; then
-        touch -r "$f" "$tmp"
         chmod --reference="$f" "$tmp" 2>/dev/null
         mv -f "$tmp" "$f"
         after=$(stat -c %s "$f")
