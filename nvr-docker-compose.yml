@@ -9,7 +9,7 @@ services:
     user: "1000:1000"
     environment:
       - MTX_RTSPTRANSPORTS=tcp
-      - MTX_WEBRTCADDITIONALHOSTS=${HOST_LAN_IP}
+      - MTX_WEBRTCADDITIONALHOSTS=${HOST_LAN_IP},${HOST_TS_IP},${MACHINE_NAME_TS}
     ports:
       - 8554:8554 # RTSP
       - 8888:8888 # HLS
@@ -33,7 +33,7 @@ services:
     # afterwards. To re-apply, delete config.json and recreate the container.
     environment:
       - BACKEND_SERVER_MEDIAMTX_URL=http://mediamtx
-      - REMOTE_MEDIAMTX_URL=http://${HOST_LAN_IP} # browser-facing, must be the host IP
+      - REMOTE_MEDIAMTX_URL=http://${MACHINE_NAME_TS} # browser-facing; no port, the app appends :8888/:8889
       - MEDIAMTX_API_PORT=9997
       - MEDIAMTX_RECORDINGS_DIR=/recordings
       - MEDIAMTX_SCREENSHOTS_DIR=/screenshots
