@@ -28,7 +28,9 @@
               - title: Tailscale Admin Console
                 url: https://console.tailscale.com/admin/machines
               - title: Home Router Admin Panel
-                url: https://homelab.napoleon-alkaline.ts.net:8443/Home.html
+                url: http://homelab.napoleon-alkaline.ts.net:8443/Home.html
+              - title: AP Admin Panel
+                url: http://homelab.napoleon-alkaline.ts.net:8444
               - title: GitHub - abdullahau
                 url: https://github.com/abdullahau
               - title: Raindrop.io
