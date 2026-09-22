@@ -303,8 +303,31 @@ Confirm it on the TV after you install:
 ssh tv '/media/developer/apps/usr/palm/services/io.strem.webos.server/bin/ffmpeg -version'
 ```
 
-The download host throttles to around 10 KB/s. The script caches the tarball
-in `build/` and checks its SHA-256, so it fetches it once.
+#### That ffmpeg download is slow
+
+`johnvansickle.com` is one self-hosted Apache box with no CDN. Single-stream
+throughput to it is erratic rather than capped. Measured within a few minutes
+on 2026-09-22:
+
+| Sample | Speed |
+| --- | --- |
+| single connection | 6.5, 31, 35, 161, 423 KB/s |
+| four parallel | two at ~450 KB/s, two stalled near 25 KB/s |
+
+So it is not a rate limit. Individual TCP flows either run at a few hundred
+KB/s or stall near zero, and parallel connections do not reliably help. Expect
+anything from 40 seconds to 10 minutes for the 16 MB file.
+
+Two consequences the script handles:
+
+- **curl can exit 0 with a truncated file.** Only the SHA-256 check catches
+  that, so the checksum is the gate, not curl's exit code.
+- **Restarting wastes the bytes you already have.** The script resumes across
+  up to five attempts, and starts over only if the file reaches full length
+  with the wrong hash.
+
+The tarball is cached in `build/`, so this happens once. Delete that directory
+only when you want a clean fetch.
 
 ### Mod 2: proxy to the host
 

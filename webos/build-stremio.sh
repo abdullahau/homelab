@@ -58,7 +58,9 @@ done
 
 FFMPEG_VERSION="7.0.2"
 FFMPEG_URL="https://johnvansickle.com/ffmpeg/releases/ffmpeg-${FFMPEG_VERSION}-armhf-static.tar.xz"
-# That host throttles hard. The tarball is cached in build/ and checked.
+# Single-stream throughput to that host is erratic: 6 KB/s to 480 KB/s in
+# samples minutes apart, and flows sometimes stall dead. So resume across
+# attempts and let the checksum be the gate. The tarball is cached in build/.
 FFMPEG_SHA256="7d41f558cb1f3395b313f8ceabed78b3731c79a0962abf405ebb5cd393e93991"
 
 UPSTREAM_HOST="${UPSTREAM_HOST:-192.168.0.100}"
@@ -114,11 +116,25 @@ build_stremio() {
     if verify_tarball; then
         echo "    cached, checksum matches"
     else
-        rm -f "$tarball"
-        # The host often drops to 10 KB/s. Resume, and give it room.
-        curl -fL --retry 5 --retry-delay 5 -C - --progress-bar \
-            -o "$tarball" "$FFMPEG_URL" || die "ffmpeg download failed"
-        verify_tarball || die "checksum mismatch. Delete $tarball and retry."
+        # Resume across attempts rather than restarting. curl can exit 0 on
+        # a truncated file here, so the checksum is the only real gate.
+        # The floor aborts a dead flow only; a slow one still finishes.
+        local got=0
+        for attempt in 1 2 3 4 5; do
+            curl -fL -C - --speed-limit 2000 --speed-time 60 --progress-bar \
+                -o "$tarball" "$FFMPEG_URL" || true
+            if verify_tarball; then got=1; break; fi
+            local size
+            size=$(wc -c < "$tarball" 2>/dev/null || echo 0)
+            if [ "$size" -ge 16150344 ]; then
+                # Full length but wrong hash: the bytes are bad, not missing.
+                echo "    attempt $attempt: complete but corrupt, starting over"
+                rm -f "$tarball"
+            else
+                echo "    attempt $attempt: $size of 16150344 bytes, resuming"
+            fi
+        done
+        [ "$got" = 1 ] || die "ffmpeg download failed or did not match $FFMPEG_SHA256"
     fi
     local ff="$WORK/ff"
     rm -rf "$ff" && mkdir -p "$ff"
