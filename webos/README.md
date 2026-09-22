@@ -12,7 +12,7 @@ Everything below uses these. Yours will differ.
 | The TV | `192.168.0.196` | LG `55NANO86VPA`, webOS 6.5.3 |
 | The host | `192.168.0.100` | the Linux box running the Docker stack |
 | Device alias | `Rehab-LG` | any label; `ares-setup-device` sets it |
-| SSH alias | `tv` | a `Host` block in `dotfiles/ssh/config` |
+| SSH alias | `tv` | a `~/.ssh/config` block; see [step 3](#3-add-the-device-and-the-ssh-alias) |
 
 "The host" means the Docker host: the machine running the Stremio streaming
 server container, the one this repo configures.
@@ -67,7 +67,8 @@ expires.
 Extend it on the TV: reopen the Developer Mode app and press **Extend**.
 
 Extend it from a terminal, with no remote. The TV keeps its session token in
-`/var/luna/preferences/devmode_enabled`:
+`/var/luna/preferences/devmode_enabled`. This needs the `tv` alias from
+[step 3](#3-add-the-device-and-the-ssh-alias):
 
 ```bash
 TOKEN=$(ssh tv cat /var/luna/preferences/devmode_enabled)
@@ -78,7 +79,7 @@ curl -s "https://developer.lge.com/secure/ResetDevModeSession.dev?sessionToken=$
 `Check` returns the time left in `errorMsg`, as `HHH:MM:SS`. `Reset` returns
 `GNL` and sets the clock back to `999:59:59`.
 
-## 3. Add the device
+## 3. Add the device and the SSH alias
 
 Fetch the key. The TV serves it on port 9991:
 
@@ -87,7 +88,36 @@ curl -o ~/.ssh/webos_rsa http://192.168.0.196:9991/webos_rsa
 chmod 600 ~/.ssh/webos_rsa
 ```
 
-Register the device. The account is always `prisoner`, never `root`:
+Add this to `~/.ssh/config`. Every `ssh tv` in this file needs it:
+
+```sshconfig
+Host tv 192.168.0.196
+  HostName 192.168.0.196
+  Port 9922
+  User prisoner
+  IdentityFile ~/.ssh/webos_rsa
+  AddKeysToAgent yes
+  HostKeyAlgorithms +ssh-rsa
+  PubkeyAcceptedKeyTypes +ssh-rsa
+  HostKeyAlias lg-tv
+```
+
+Why each line is there:
+
+| Line | Reason |
+| --- | --- |
+| `Port 9922`, `User prisoner` | Developer Mode opens SSH there, as `prisoner`. Never `root`. |
+| `IdentityFile` | the key you just fetched |
+| `HostKeyAlgorithms +ssh-rsa` | the TV offers `ssh-rsa` host keys only, which OpenSSH 8.8 and later refuse by default |
+| `PubkeyAcceptedKeyTypes +ssh-rsa` | same, for the key you present |
+| `HostKeyAlias lg-tv` | pins the known-hosts entry to a name, so a new DHCP address does not look like a changed host key |
+| `AddKeysToAgent yes` | the key has a passphrase; this asks once per session |
+
+This repo keeps that block in `dotfiles/ssh/config`. Anywhere else, paste it
+into `~/.ssh/config`.
+
+Register the device with the CLI. The account is always `prisoner`, never
+`root`:
 
 ```bash
 ares-setup-device -a Rehab-LG \
@@ -380,13 +410,12 @@ the `prisoner` jail does not have. Use plain `ssh`:
 ssh tv pwd        # /media/developer
 ```
 
-The `tv` host block lives in the `dotfiles` repo at `ssh/config`. The TV offers
-`ssh-rsa` host keys only, so that block sets `HostKeyAlgorithms +ssh-rsa` and
-`PubkeyAcceptedKeyTypes +ssh-rsa`.
+That needs the `tv` block from [step 3](#3-add-the-device-and-the-ssh-alias).
 
 The key is passphrase-protected, so `ssh` asks for the 6 characters. Run
-`ssh-add ~/.ssh/webos_rsa` to script against it. The shell is BusyBox: it has
-no `/dev/tcp`, so probe ports with `wget`.
+`ssh-add ~/.ssh/webos_rsa` once to script against it without prompts.
+
+The shell is BusyBox. It has no `/dev/tcp`, so probe ports with `wget`.
 
 ## How playback works
 
