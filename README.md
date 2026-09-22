@@ -88,6 +88,7 @@ docker compose -f plex-docker-compose.yml down
 | Beszel | <http://homelab:8090> | Host and container metrics |
 | Tautulli | <http://homelab:8181> | Plex activity and history |
 | Speedtest Tracker | <http://homelab:9080/admin> | Line speed history |
+| Stremio | <http://homelab:11470> | Streaming server for Stremio clients |
 
 ### Notes
 
@@ -177,6 +178,67 @@ Reload Caddy after an edit:
 ```bash
 docker compose -f edge-stack-docker-compose.yml restart caddy
 ```
+
+## Stremio
+
+`stremio-docker-compose.yml` runs the Stremio **streaming server** only. The
+server fetches and remuxes streams. It holds no catalogue and no add-on.
+Catalogues, the player and the add-ons all live in the Stremio client.
+
+It uses `network_mode: host`. The server builds an HTTPS address from the IP
+it sees. In bridge mode that is the container IP, which no browser reaches.
+A `ports:` block is ignored, like AdGuard. The server binds `11470` (HTTP)
+and `12470` (HTTPS).
+
+Do not mount the host `ffmpeg`. The image ships jellyfin-ffmpeg 4.4.1 at
+`/usr/lib/jellyfin-ffmpeg/`. A bind mount copies the binary without its
+shared libraries, so it fails to start.
+
+### Point a client at this server
+
+1. Open <https://web.stremio.com>, or the desktop or Android app.
+2. Go to **Settings** → **Streaming**.
+3. Set **Streaming server URL** to `http://homelab:11470`.
+4. The status must read **Connected**.
+
+The web client at `web.stremio.com` is HTTPS, so a browser blocks a plain
+HTTP server. Use the desktop app, or open the web client over HTTP.
+
+Cache lives in `./stremio`. The default limit is 2 GiB. Change it under
+**Settings** → **Streaming** → **Cache size**.
+
+### Why there is no GPU
+
+The compose file passes no `/dev/dri`. Tested on 2026-09-21: the server probes
+`qsv`, `nvenc` and `vaapi` with an HEVC sample only. The Iris 6100 exposes
+H.264 VAAPI but no HEVC profile, so all three probes fail even with the GPU
+attached. Transcoding stays on the CPU.
+
+The probe result is cached in `stremio/server-settings.json` and never re-runs.
+Delete that file to force a fresh probe.
+
+### Add-ons
+
+Add-ons attach to your Stremio **account**, not to this server. Install one
+once, and every device that signs in to the same account gets it. Nothing
+changes in the compose file.
+
+Install Torrentio:
+
+1. Open <https://torrentio.strem.fun/configure>.
+2. Pick your providers. Leave the rest at the default for a first run.
+3. Set a debrid service if you have one. Torrentio then streams from the
+   debrid cache instead of a raw swarm.
+4. Click **Install**. The browser hands the link to the Stremio app.
+
+If the **Install** button does nothing, copy the URL it generates and add it
+by hand: **Add-ons** → **Add add-on** → paste → **Install**.
+
+Torrentio is a community add-on. Install it from the official configure page
+above. Do not use mirrors.
+
+> Torrentio streams from public torrent swarms. Your home IP is visible to
+> every peer unless a debrid service sits in front.
 
 ## Torrent search
 

@@ -1,0 +1,33 @@
+name: stremio
+
+# Stremio's streaming server. It only fetches and remuxes streams. The
+# catalogues, the player and the add-ons all live in the Stremio client.
+
+services:
+  stremio:
+    image: stremio/server:latest
+    container_name: stremio
+    restart: unless-stopped
+    # The server binds 11470 and 12470.
+    network_mode: host
+    environment:
+      - TZ=${TZ}
+      # The image ships jellyfin-ffmpeg 4.4.1. Never mount the host ffmpeg:
+      # the binary alone lands without its shared libraries and will not run.
+      - FFMPEG_BIN=/usr/lib/jellyfin-ffmpeg/ffmpeg
+      - FFPROBE_BIN=/usr/lib/jellyfin-ffmpeg/ffprobe
+      - APP_PATH=/config
+      # The image cannot see LAN devices, so the cast scan only adds delay.
+      - CASTING_DISABLED=1
+      # Set NO_CORS=1 only if you serve your own copy of stremio-web.
+      # web.stremio.com is allowed already, and this turns off every check.
+      #- NO_CORS=1
+    # No /dev/dri on purpose. The server probes hardware transcoding with an
+    # HEVC sample only, and this Iris 6100 exposes no HEVC VAAPI profile, so
+    # every probe fails even with the GPU attached. See the README.
+    volumes:
+      - ./stremio:/config
+      - ./stremio/.server-home:/root/.stremio-server
+      - /etc/localtime:/etc/localtime:ro
+    security_opt:
+      - no-new-privileges:true
