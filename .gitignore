@@ -14,6 +14,7 @@
 !docker-manager.sh
 !scripts/*.sh
 !scripts/pre-commit
+!webos/*.sh
 
 # Templates only, never the rendered output
 !*.template
@@ -37,3 +38,9 @@ adguard-home/
 mediamtx/mediamtx.yml
 hysteria/config.yaml
 transmission/settings.json
+# Sideload packages and their build scratch. Download or rebuild them;
+# see webos/README.md. The build tree carries a README.md of its own, which
+# the unanchored "!README.md" above would otherwise pick up.
+*.ipk
+*.tar.xz
+webos/build/

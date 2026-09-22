@@ -223,22 +223,50 @@ Add-ons attach to your Stremio **account**, not to this server. Install one
 once, and every device that signs in to the same account gets it. Nothing
 changes in the compose file.
 
-Install Torrentio:
+#### Torrentio without a debrid service
+
+This is the plain setup. Torrentio hands magnet links to the streaming
+server, and the server downloads from the public swarm.
+
+1. Open <https://web.stremio.com> and sign in.
+2. Open <https://torrentio.strem.fun/configure> in a second tab.
+3. Pick your providers. Leave the rest at the default for a first run.
+4. Leave **Debrid Provider** empty.
+5. Click **Install** at the bottom. The browser hands the link to Stremio.
+6. Stremio opens an **Install Addon** window. Click the green **Install**
+   button.
+
+If the **Install** button does nothing, copy the URL it generates. Add it by
+hand: **Add-ons** → **Add add-on** → paste → **Install**.
+
+> Torrentio streams from public torrent swarms. Every peer sees your home IP.
+> A debrid service hides it.
+
+#### Torrentio with Real-Debrid
+
+Use this if you hold a Real-Debrid account. Real-Debrid fetches the file, so
+your IP never joins the swarm.
 
 1. Open <https://torrentio.strem.fun/configure>.
-2. Pick your providers. Leave the rest at the default for a first run.
-3. Set a debrid service if you have one. Torrentio then streams from the
-   debrid cache instead of a raw swarm.
-4. Click **Install**. The browser hands the link to the Stremio app.
+2. Near the bottom, set **Debrid Provider** to **Real Debrid**. A new text
+   box appears under it.
+3. Copy your API key from <https://real-debrid.com/apitoken>.
+4. Paste the key into the **RealDebrid API Key** box.
+5. Under **Debrid Options**, check **Don't show download to debrid links**.
+   Leave the other boxes clear.
+6. Click **Install**. Stremio opens an **Install Addon** window. Click the
+   green **Install** button.
 
-If the **Install** button does nothing, copy the URL it generates and add it
-by hand: **Add-ons** → **Add add-on** → paste → **Install**.
+#### Remove WatchHub
+
+Stremio ships WatchHub by default. It clutters the stream list. Remove it:
+
+1. Click the puzzle piece at the top right.
+2. Open **My Addons**.
+3. Find **WatchHub** and click **Uninstall**.
 
 Torrentio is a community add-on. Install it from the official configure page
 above. Do not use mirrors.
-
-> Torrentio streams from public torrent swarms. Your home IP is visible to
-> every peer unless a debrid service sits in front.
 
 ## Torrent search
 

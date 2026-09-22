@@ -1,16 +1,42 @@
 # webOS — LG TV
 
-Sideload apps onto the LG TV (`Rehab-LG`, `192.168.0.196`) with the webOS CLI.
+Sideload apps onto the LG TV with the webOS CLI.
+
+## The TV
+
+Read from `/var/run/nyx/` over SSH on 2026-09-22:
+
+| Field | Value |
+| --- | --- |
+| Model | `55NANO86VPA` (2021 NanoCell) |
+| Device alias | `Rehab-LG`, `192.168.0.196` |
+| webOS | 6.5.3 (`kisscurl-koli`, build 47) |
+| Kernel | 4.4.84, `armv7l` |
+| CPU | 2 cores, ARMv8 core in 32-bit mode |
+| RAM | 2 GB |
+| Free space | ~900 MB on `/media/developer` |
+| Node on TV | v8.12.0 |
+
+Two points drive everything below.
+
+The TV is a **2021** model, so webOS 6.5 runs a modern browser engine. It can
+run the full Stremio app, not just a web page in a frame.
+
+The userspace is **32-bit** (`armv7l`), not `aarch64`. A 64-bit binary does
+not run here. Every community Stremio build ships `arm64` ffmpeg, so each one
+needs a repack. See [Mod 1](#mod-1-swap-ffmpeg-for-armhf).
 
 ## 1. Install the CLI
 
-Needs Node 20. Node 23 and later removed `util.isDate`, which `ares-cli` still
-calls. See [Known issues](#known-issues).
-
 ```bash
+brew install node
 npm install -g @webosose/ares-cli
 ares-setup-device --list
 ```
+
+`ares-cli` 2.4.0 works on Node 26.9.0 here. Older notes say to pin Node 20,
+because `ssh2-streams` called `util.isDate`, which Node 23 removed. That fault
+no longer appears. Drop back to Node 20 only if it returns.
 
 ## 2. Turn on Developer Mode on the TV
 
@@ -41,7 +67,7 @@ ares-setup-device -a Rehab-LG \
   -i "privatekey=webos_rsa" -i "passphrase=XXXXXX"
 ```
 
-Test it. An empty list means the connection works:
+Test it:
 
 ```bash
 ares-install -d Rehab-LG --list
@@ -52,33 +78,217 @@ Mode off and on makes a new key and passphrase, so repeat this step.
 
 `ares-device -i` does not work here. A retail TV denies that Luna call.
 
+The CLI stores the passphrase in plain text at
+`~/.webos/ose/novacom-devices.json`.
+
 ## 4. Install Stremio
 
-Use the repacked file in this folder:
+No stock release runs on this TV as published. `build-stremio.sh` downloads a
+release, applies both required mods and packages the result:
 
 ```bash
-ares-install -d Rehab-LG org.balazs.stremio-wrapper_1.0.0_nogit.ipk
-ares-install -d Rehab-LG --list
-ares-launch -d Rehab-LG org.balazs.stremio-wrapper
+./build-stremio.sh                  # build the pinned version
+./build-stremio.sh 1.1.5 --install  # build, install, launch, verify
+./build-stremio.sh --wrapper        # the fallback wrapper instead
+./build-stremio.sh --help
 ```
 
-The app is an iframe wrapper around `https://tv.strem.io`. Nothing else.
+Then, in the app: **Settings** → **Server** → **EDIT_URL** →
+`http://127.0.0.1:8080/`. Leave it on loopback. See
+[Mod 2](#mod-2-point-it-at-the-homelab).
 
-### Repacking
-
-The upstream release ships the author's whole `.git` directory inside the app:
-308 KB of the 384 KB installed. Strip it and rebuild:
+To install a package you already built:
 
 ```bash
-gh release download v1.0.0 -R Balazsmi/Stremio-LG-TV
-ar x org.balazs.stremio-wrapper_1.0.0_all.ipk
-mkdir -p d && tar xzf data.tar.gz -C d
-cp -a d/usr/palm/applications/org.balazs.stremio-wrapper app
-rm -rf app/.git
-ares-package app -o .
+ares-install -d Rehab-LG io.strem.webos_1.1.5_all.ipk
+ares-launch -d Rehab-LG io.strem.webos
 ```
 
-Result: 26 KB instead of 81 KB. Installed size drops to 76 KB.
+### Updating to a new release
+
+```bash
+./build-stremio.sh 1.2.0 --install
+```
+
+The script asserts every assumption and stops if upstream moved: a missing
+service directory, an ffmpeg that is not 32-bit ARM, a changed `launch.js`
+anchor, or a leftover hard-coded `127.0.0.1:11470`. A stop means read the new
+`launch.js` before you trust the patch. It never installs a package it could
+not fully verify.
+
+### Why this build
+
+It is a real Stremio app, not a page in a frame. Three things matter:
+
+- It plays through the **native webOS media pipeline**. The TV decodes HEVC,
+  10-bit and Dolby Vision in hardware. Nothing re-encodes.
+- It ships its own **Stremio streaming server**, so it needs nothing else to
+  work. We repoint it at the homelab instead. See
+  [Mod 2](#mod-2-point-it-at-the-homelab).
+- It picks the **audio track that matches your language**. Stock Stremio
+  always takes the first track.
+
+Verified on the TV after install:
+
+```
+frontend on 127.0.0.1:8080
+proxy :8080 -> 192.168.0.100:11470, server 4.21.2, cache 2 GiB
+ffmpeg 7.0.2-static, armhf, runs
+```
+
+### Other builds considered
+
+| Build | Verdict |
+| --- | --- |
+| [spcljense/stremio-webos](https://github.com/spcljense/stremio-webos) | **In use.** Native player, bundled server, active (1.1.5, Sep 2026). |
+| [kieranbrown/stremio-webos](https://github.com/kieranbrown/stremio-webos) | Same idea, fewer fixes, last release May 2026. |
+| [RazaGR/stremio-lg-tv](https://github.com/RazaGR/stremio-lg-tv) | Points the browser at `tv.strem.io`. No gain over the old wrapper. |
+| [Balazsmi/Stremio-LG-TV](https://github.com/Balazsmi/Stremio-LG-TV) | The old wrapper. Kept as a fallback. |
+
+### Packages
+
+**Git tracks no `.ipk`.** `.gitignore` denies `*.ipk` outright. Download or
+rebuild them instead.
+
+| Package | Source | Rebuild with |
+| --- | --- | --- |
+| `io.strem.webos_1.1.5_all.ipk` | `gh release download v1.1.5 -R spcljense/stremio-webos` | `./build-stremio.sh` |
+| `org.balazs.stremio-wrapper_1.0.0_nogit.ipk` | `gh release download v1.0.0 -R Balazsmi/Stremio-LG-TV` | `./build-stremio.sh --wrapper` |
+
+The first **must** be rebuilt: the upstream release ships `arm64` ffmpeg and
+points at its own server. The second installs as published; the repack only
+strips 308 KB of the author's `.git` directory.
+
+The wrapper is the fallback. Keep it. It needs no homelab server and no
+patching, so it is the thing to reach for when a rebuild goes wrong.
+
+`build-stremio.sh` caches downloads in `build/`, which is also untracked.
+Delete that directory to force a clean fetch.
+
+### Mod 1: swap ffmpeg for armhf
+
+Every community build ships `arm64` ffmpeg. This TV runs a 32-bit userspace,
+so those binaries cannot execute. `build-stremio.sh` swaps in the `armhf`
+static build from <https://johnvansickle.com/ffmpeg/> and refuses to package
+unless both binaries report 32-bit ARM.
+
+To check a package by hand, before or after:
+
+```bash
+ar x io.strem.webos_1.1.5_all.ipk && tar xzf data.tar.gz
+file usr/palm/services/io.strem.webos.server/bin/ffmpeg
+# want: ELF 32-bit LSB executable, ARM
+# wrong: ELF 64-bit LSB executable, ARM aarch64
+```
+
+Confirm it on the TV after you install:
+
+```bash
+ssh tv '/media/developer/apps/usr/palm/services/io.strem.webos.server/bin/ffmpeg -version'
+```
+
+The download host throttles to around 10 KB/s. The script caches the tarball
+in `build/` and checks its SHA-256, so it fetches it once.
+
+### Mod 2: point it at the homelab
+
+By default the app talks to the server it bundles, so the **TV** joins the
+torrent swarm and caches to its own 900 MB of free space.
+
+You cannot fix this in **Settings**. `www/index.html` sets
+
+```js
+window.__STREMIO_SERVER_URL__ = 'http://127.0.0.1:8080';
+```
+
+and every webOS call reads `window.__STREMIO_SERVER_URL__ ||
+settings.streamingServerUrl`. The global always wins, so the app skips the URL
+you type. The core still honours it when it builds stream URLs, so you end up
+with streams aimed at one server and `/heartbeat` and `/tracks/` aimed at the
+other. That split is why it fails.
+
+Pointing the app straight at `http://192.168.0.100:11470` also trips CORS. The
+Stremio server sends `Access-Control-Allow-Origin` on `/stats.json` only, not
+on `/heartbeat`, `/settings` or the `OPTIONS` preflight.
+
+Fix it in the proxy instead. `launch.js` already forwards everything that is
+not a static file. Repoint that forward and the page stays on
+`127.0.0.1:8080`, so it is same-origin and CORS never applies.
+
+`build-stremio.sh` does this. It inserts, after `var streamingReady = false;`:
+
+```js
+var UPSTREAM_HOST = '192.168.0.100';
+var UPSTREAM_PORT = 11470;
+```
+
+and rewrites both proxy blocks, at about line 117 and line 179:
+
+```js
+forwardHeaders.host = UPSTREAM_HOST + ':' + UPSTREAM_PORT;
+hostname: UPSTREAM_HOST,
+port: UPSTREAM_PORT,
+```
+
+Keep the server on the TV instead with `UPSTREAM_HOST=127.0.0.1
+./build-stremio.sh`.
+
+Then set the URL in the app. This is the step that catches you out: leave it
+on the **loopback** address, not the homelab one.
+
+**Settings** → **Server** → **EDIT_URL** → `http://127.0.0.1:8080/`
+
+The core builds stream URLs from this value. Point it at
+`192.168.0.100:11470` and the core probes the homelab cross-origin, the
+browser blocks it on CORS, and **Server** reads **offline**. Point it at
+`127.0.0.1:8080` and every call rides the proxy, which forwards to the
+homelab. The proxy does the redirect, so the app never needs to know.
+
+Check which server answers after you install:
+
+```bash
+ssh tv 'wget -qO- http://127.0.0.1:8080/settings' | grep -o '"serverVersion":"[^"]*"'
+```
+
+The homelab runs 4.21.2. The bundled server runs 4.20.19. Seeing 4.21.2 means
+the proxy works.
+
+The bundled server still starts and sits idle on `127.0.0.1:11470`. It costs
+about 100 MB of the TV's 1.8 GB. Leave it. It is the fallback if you ever
+revert the proxy.
+
+## The old wrapper
+
+`org.balazs.stremio-wrapper` is still installed. It is a 26 KB frame around
+`https://tv.strem.io`. It needs no homelab server and no patching, so keep
+it as the fallback when a rebuild goes wrong.
+
+The upstream release ships the author's whole `.git` directory inside the
+app: 308 KB of the 384 KB installed. Build it with that stripped:
+
+```bash
+./build-stremio.sh --wrapper            # 81 KB -> 26 KB, 76 KB installed
+./build-stremio.sh --wrapper --install
+```
+
+The script counts the `.git` files it removes and stops if any survive. It
+also handles upstream fixing this one day: no `.git` means it packages the
+release as-is instead of failing.
+
+Stripping `.git` is the **only** change to this package. The app itself is
+untouched: an iframe on `https://tv.strem.io`, nothing more.
+
+It packages with `--no-minify`, so `main.js` stays byte-identical to
+upstream. Built without that flag, `ares-package` runs its own minifier and
+rewrites the back-button handler from `return void` to `if/else`. That runs
+the same, but it is a needless difference. Reproduced both ways on
+2026-09-22.
+
+Remove it with:
+
+```bash
+ares-install -d Rehab-LG -r org.balazs.stremio-wrapper
+```
 
 ## Shell access
 
@@ -93,52 +303,43 @@ The `tv` host block lives in the `dotfiles` repo at `ssh/config`. The TV offers
 `ssh-rsa` host keys only, so that block sets `HostKeyAlgorithms +ssh-rsa` and
 `PubkeyAcceptedKeyTypes +ssh-rsa`.
 
+The key is passphrase-protected, so `ssh` asks for the 6 characters. The shell
+is BusyBox. It has no `/dev/tcp`, so probe ports with `wget` instead.
+
 ## How playback works
 
-The TV never torrents. The `stremio` container on the homelab does.
+The homelab fetches. The TV decodes.
 
 ```
-TV (browser, iframe)  --HTTP-->  homelab:11470  --BitTorrent-->  swarm
+TV: app + proxy (:8080)  --HTTP-->  homelab:11470  --BitTorrent-->  swarm
+TV: player  <--direct file--  proxy
 ```
 
-The TV holds only HTTP connections to `192.168.0.100:11470`. A sandboxed web
-page cannot open raw BitTorrent sockets. Downloaded pieces land in
-`/docker/stremio/stremio-cache`, capped at 2 GB by `cacheSize`.
+The player hands the file to the native webOS pipeline, so the TV decodes it
+as-is. A 4K HEVC Dolby Vision file plays as 4K HEVC Dolby Vision.
 
-### Why the server re-encodes
+Every call rides the proxy, so the page never leaves its own origin. That is
+what keeps CORS out of the picture.
 
-The player is an HTML5 `<video>` tag in the TV browser, not a real media player.
-It plays very little. A typical 2160p release forces a full re-encode:
+The old wrapper could not do this. It used an HTML5 `<video>` tag in the TV
+browser, so the homelab server re-encoded every 4K release down to 1080p SDR
+H.264 and dropped bitmap subtitles.
 
-| Stream | Source | Result |
-| --- | --- | --- |
-| Container | Matroska (`.mkv`) | repackaged to fMP4/HLS |
-| Video | HEVC Main 10, 3840x1608, Dolby Vision | re-encoded to H.264 1920 wide, 8-bit, SDR |
-| Audio | E-AC-3 5.1 (DD+ Atmos) | re-encoded to AAC 5.1 |
-| Subtitles | PGS (bitmap) | dropped |
+The server throttles itself: `btDownloadSpeedHardLimit` is 3.5 MB/s, about
+28 Mbps. That carries 1080p fine. A high-bitrate 4K remux may stall. Raise the
+limit under **Settings** → **Streaming** if it does.
 
-The live `ffmpeg` command proves it:
+The homelab still has `transcodeMaxWidth` at 1920, set back when the wrapper
+forced a transcode. Direct play ignores it. It only bites if a file ever falls
+back to transcoding, and then it downscales to 1080p.
 
-```
--vf scale=1920:-2:flags=lanczos,format=yuv420p,setparams=...bt709
--c:v libx264 -preset:v ultrafast
--c:a aac -ac:a 6
-```
+### Where the cache goes
 
-So a 4K Dolby Vision file reaches the TV as 1080p SDR H.264, encoded at the
-`ultrafast` preset. It costs about 30% CPU, with `transcodeHardwareAccel: false`.
-
-### What plays with no re-encode
-
-An **MP4 container with H.264 video and AAC audio**. The browser plays that
-natively, so the server passes the bytes through untouched.
-
-Prefer `1080p x264 WEB-DL` releases. A `2160p x265 REMUX` gains you nothing
-here: it is downscaled and tone-mapped anyway, and costs CPU to do it.
-
-Raising `transcodeMaxWidth` to 3840 only removes the downscale. HEVC, 10-bit
-and E-AC-3 still force a re-encode. The real fix for 4K HDR is a native Stremio
-client with a real player, not this browser wrapper.
+| | Old wrapper | This build, stock | This build, repointed |
+| --- | --- | --- | --- |
+| Torrent peer | homelab | the TV | homelab |
+| Cache path | `/docker/stremio/stremio-cache` | `/media/developer/apps/...` | `/docker/stremio/stremio-cache` |
+| Cache size | 2 GiB | 0, no retention | 2 GiB |
 
 ## Privacy note
 
@@ -150,19 +351,35 @@ Turn it off on the TV: **Settings → General → System → Additional Settings
 Live Plus** (off), and clear the ad agreements under **User Agreements**.
 Blocking `*.alphonso.tv` in AdGuard Home also works.
 
-## Known issues
+## Why not the LG Content Store app
 
-Three bugs in `ares-cli` 2.4.0. Node 20 fixes the first. The other two need
-edits inside the installed package, which `npm update` undoes.
+Stremio ships an official webOS app for 2020 and later models, so this TV
+qualifies. Some stores list it, such as Israel:
+<https://il.lgappstv.com/main/tvapp/detail?appId=1214520>. This region does
+not.
+
+You cannot sideload it. The Content Store serves signed packages to the TV
+only, and Stremio publishes no `.ipk`: their GitHub holds `stremio-web`,
+`stremio-core` and the desktop shells, and no webOS repo.
+
+Changing the TV's country under **Settings → General → System → Location**
+switches the store catalogue. It also resets apps and logins. The sideloaded
+build above avoids that.
+
+## Known issues
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| `TypeError: isDate is not a function` | `ssh2-streams` calls `util.isDate`, removed in Node 23 | Use Node 20 |
-| `rm: can't remove '/media/developer/temp'` | Installer deletes a root-owned directory that `prisoner` cannot touch | In `lib/install.js`, clear the contents instead: `mkdir -p DIR && rm -rf DIR/*` |
+| `TypeError: isDate is not a function` | `ssh2-streams` calls `util.isDate`, removed in Node 23 | Use Node 20. Not seen on Node 26 with `ares-cli` 2.4.0 |
+| `rm: can't remove '/media/developer/temp'` | Installer deletes a root-owned directory that `prisoner` cannot touch | In `lib/install.js`, clear the contents instead: `mkdir -p DIR && rm -rf DIR/*`. Already applied here; `npm update` undoes it |
 | `can't open '/etc/profile'` | `ares-shell` assumes a login shell | Use `ssh` instead |
+| `/hlsv2/*` returns 500 `no ffmpeg found` | 64-bit ffmpeg in the package cannot run | Repack with `armhf`. See above. Direct play still works; only the transcode fallback breaks |
+| A repacked app misbehaves, or its files differ from upstream for no reason | `ares-package` minifies JavaScript by default | Always pass `--no-minify`. It matters most for a hand-patched bundle, where re-minifying can undo the patch |
 
 ## References
 
-- [Balazsmi/Stremio-LG-TV](https://github.com/Balazsmi/Stremio-LG-TV) — the Stremio `.ipk`
+- `build-stremio.sh` — builds either package; `--wrapper` for the fallback
+- [spcljense/stremio-webos](https://github.com/spcljense/stremio-webos) — the app in use
 - [webos-tools/cli](https://github.com/webos-tools/cli) — CLI source
 - [CLI user guide](https://www.webosose.org/docs/tools/sdk/cli/cli-user-guide)
+- [John Van Sickle ffmpeg builds](https://johnvansickle.com/ffmpeg/) — static `armhf`
