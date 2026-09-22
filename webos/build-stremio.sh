@@ -4,19 +4,19 @@
 # Two packages, two jobs.
 #
 # Stremio (default), from spcljense/stremio-webos. The upstream release does
-# not work here. It needs two changes:
+# not work here. It needs three changes:
 #   1. armhf ffmpeg. The TV runs a 32-bit userspace (armv7l). Upstream
 #      ships arm64 binaries, which cannot execute.
 #   2. A new proxy target. The bundled server makes the TV the torrent
-#      peer. We forward to the homelab server instead.
+#      peer. We forward to the upstream server on the host instead.
 #   3. No local server at all. The Stremio core defaults its "Server"
 #      setting to 127.0.0.1:11470, so the TV would still torrent unless
 #      someone edits that by hand. We keep the bundled server off and
-#      listen on 11470 ourselves, so both addresses reach the homelab.
+#      listen on 11470 ourselves, so both addresses reach the host.
 #      Skipped when UPSTREAM_HOST is loopback, or with --dual.
 #
 # --dual keeps the upstream remote but leaves the bundled server running:
-#   8080  -> homelab      11470 -> the TV itself
+#   8080  -> the host     11470 -> the TV itself
 # You then choose in the app under Settings -> Server. Note the core
 # DEFAULTS to 11470, so an unset profile silently torrents on the TV.
 #
@@ -159,7 +159,7 @@ if anchor not in s:
 
 s = s.replace(anchor, anchor + """
 
-// Upstream Stremio server. The homelab does the torrenting, not the TV.
+// Upstream Stremio server. The host does the torrenting, not the TV.
 // The page stays on 127.0.0.1:8080, so this proxy keeps it same-origin
 // and the upstream never needs to send a CORS header.
 var UPSTREAM_HOST = '%s';
@@ -198,7 +198,7 @@ if os.environ.get("APPLY_MOD3") != "yes":
 # 127.0.0.1:11470 -- the bundled server. A user who never edits that setting
 # silently torrents on the TV. So when the upstream is remote: do not start
 # the bundled server at all, and listen on 11470 ourselves, proxying to the
-# upstream. Then both addresses reach the homelab and the TV cannot torrent.
+# upstream. Then both addresses reach the host and the TV cannot torrent.
 old_boot = """    setImmediate(function() {
         try {
             require('./server.js');
@@ -346,7 +346,7 @@ if [ "$MODE" = "stremio" ]; then
         cat <<EOF
 
 Two servers, and you choose:
-  http://127.0.0.1:8080/   -> ${UPSTREAM_HOST}:${UPSTREAM_PORT} (homelab)
+  http://127.0.0.1:8080/   -> ${UPSTREAM_HOST}:${UPSTREAM_PORT} (the host)
   http://127.0.0.1:11470/  -> the TV itself
 
 Set it in the app: Settings -> Server -> EDIT_URL.
