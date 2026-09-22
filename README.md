@@ -207,6 +207,46 @@ HTTP server. Use the desktop app, or open the web client over HTTP.
 Cache lives in `./stremio`. The default limit is 2 GiB. Change it under
 **Settings** → **Streaming** → **Cache size**.
 
+### Download limits
+
+Raised on 2026-09-22, after the TV moved to a native client that direct-plays
+4K. The old values capped Stremio at about 17% of the line.
+
+| Setting | Was | Now |
+| --- | --- | --- |
+| `btDownloadSpeedSoftLimit` | 2.5 MiB/s (21 Mbps) | 12 MiB/s (101 Mbps) |
+| `btDownloadSpeedHardLimit` | 3.5 MiB/s (29 Mbps) | 20 MiB/s (168 Mbps) |
+
+The line measures about 171 Mbps on a single stream. A 4K WEB-DL needs
+15-25 Mbps and a 4K remux 50-100 Mbps, so the old 29 Mbps ceiling stalled
+exactly the files the TV can now play untouched. The new hard limit leaves
+headroom instead of taking the whole line.
+
+Apply a change without restarting the container:
+
+```bash
+curl -X POST http://homelab:11470/settings -H "Content-Type: application/json" \
+  -d '{"btDownloadSpeedSoftLimit":12582912,"btDownloadSpeedHardLimit":20971520}'
+```
+
+The server writes it to `stremio/server-settings.json`, so it survives a
+restart.
+
+### Why transcodeMaxWidth stays at 1920
+
+Raising it to 3840 would stop a fallback transcode from downscaling 4K. It
+would also make that transcode unplayable. Measured on 2026-09-22 with a real
+3840x2076 HEVC 10-bit source, 60 seconds, `libx264 -preset ultrafast`:
+
+| Target | Speed | Result |
+| --- | --- | --- |
+| 1920 wide | 1.02x real time, 25 fps | just keeps up |
+| 3840 wide | 0.58x real time, 14 fps | stutters |
+
+The i5-5287U has two cores and no working hardware encoder, so 1920 is the
+most it sustains. This only matters on a fallback: the TV direct-plays almost
+everything now, and then nothing transcodes at all.
+
 ### Why there is no GPU
 
 The compose file passes no `/dev/dri`. Tested on 2026-09-21: the server probes

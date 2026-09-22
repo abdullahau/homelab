@@ -47,8 +47,22 @@ no longer appears. Drop back to Node 20 only if it returns.
 5. Reopen the app. Turn on **Key Server**.
 6. Note the 6-character passphrase on screen.
 
-The session lasts 1000 hours. Reopen the app and press **Extend** before it
-ends. Apps stay installed but refuse to launch once it expires.
+The session lasts 1000 hours. Apps stay installed but refuse to launch once
+it expires.
+
+Extend it from the TV: reopen the Developer Mode app and press **Extend**.
+
+Extend it from here, with no remote: the TV keeps its session token in
+`/var/luna/preferences/devmode_enabled`.
+
+```bash
+TOKEN=$(ssh tv cat /var/luna/preferences/devmode_enabled)
+curl -s "https://developer.lge.com/secure/CheckDevModeSession.dev?sessionToken=$TOKEN"
+curl -s "https://developer.lge.com/secure/ResetDevModeSession.dev?sessionToken=$TOKEN"
+```
+
+`Check` returns the time left in `errorMsg`, as `HHH:MM:SS`. `Reset` returns
+`GNL` and puts the clock back to `999:59:59`. Extended on 2026-09-22.
 
 ## 3. Add the device
 
@@ -84,18 +98,21 @@ The CLI stores the passphrase in plain text at
 ## 4. Install Stremio
 
 No stock release runs on this TV as published. `build-stremio.sh` downloads a
-release, applies both required mods and packages the result:
+release, applies all three mods and packages the result:
 
 ```bash
-./build-stremio.sh                  # build the pinned version
-./build-stremio.sh 1.1.5 --install  # build, install, launch, verify
-./build-stremio.sh --wrapper        # the fallback wrapper instead
+./build-stremio.sh --dual --install  # what this TV runs
+./build-stremio.sh --install         # homelab only, TV cannot torrent
+./build-stremio.sh --wrapper         # the fallback wrapper instead
 ./build-stremio.sh --help
 ```
 
-Then, in the app: **Settings** → **Server** → **EDIT_URL** →
-`http://127.0.0.1:8080/`. Leave it on loopback. See
-[Mod 2](#mod-2-point-it-at-the-homelab).
+This TV runs the `--dual` build, so set the server by hand:
+
+**Settings** → **Server** → **EDIT_URL** → `http://127.0.0.1:8080/`
+
+Leave it on the default `11470` and the **TV** torrents instead of the
+homelab. See [The dual layout](#the-dual-layout).
 
 To install a package you already built:
 
@@ -233,29 +250,101 @@ port: UPSTREAM_PORT,
 Keep the server on the TV instead with `UPSTREAM_HOST=127.0.0.1
 ./build-stremio.sh`.
 
-Then set the URL in the app. This is the step that catches you out: leave it
-on the **loopback** address, not the homelab one.
+### Mod 3: never let the TV serve
 
-**Settings** → **Server** → **EDIT_URL** → `http://127.0.0.1:8080/`
+Mod 2 alone is not enough, and this cost a real evening of confusion.
 
-The core builds stream URLs from this value. Point it at
-`192.168.0.100:11470` and the core probes the homelab cross-origin, the
-browser blocks it on CORS, and **Server** reads **offline**. Point it at
-`127.0.0.1:8080` and every call rides the proxy, which forwards to the
-homelab. The proxy does the redirect, so the app never needs to know.
+The core builds stream URLs from **Settings** → **Server**, which defaults to
+`http://127.0.0.1:11470` — the bundled server. Leave that untouched and the
+app bypasses the proxy completely: the **TV** joins the swarm while the
+homelab sits idle. It looks like it works, because it does work. It just
+works on the wrong machine.
 
-Check which server answers after you install:
+Setting it to `http://127.0.0.1:8080/` by hand fixes it. Pointing it at
+`192.168.0.100:11470` does not: the core then probes the homelab
+cross-origin, the browser blocks it on CORS, and **Server** reads
+**offline**.
 
-```bash
-ssh tv 'wget -qO- http://127.0.0.1:8080/settings' | grep -o '"serverVersion":"[^"]*"'
+**Not in use here.** See [The dual layout](#the-dual-layout) for what is
+installed and why.
+
+Mod 3 removes the choice. When the upstream is remote it never starts the
+bundled server, and it listens on `11470` itself, proxying to the upstream:
+
+```js
+shadow = http.createServer(function(req, res) {
+    proxyToStreaming(req, res);
+});
+shadow.listen(11470, '127.0.0.1');
 ```
 
-The homelab runs 4.21.2. The bundled server runs 4.20.19. Seeing 4.21.2 means
-the proxy works.
+Both addresses now reach the homelab, so the **Server** setting cannot be
+wrong. The TV cannot torrent even by accident, and the idle bundled server
+no longer costs about 100 MB of RAM.
 
-The bundled server still starts and sits idle on `127.0.0.1:11470`. It costs
-about 100 MB of the TV's 1.8 GB. Leave it. It is the fallback if you ever
-revert the proxy.
+### The dual layout
+
+`--dual` is what runs on this TV. It keeps the upstream remote but leaves the
+bundled server alone, so both servers exist and you pick between them:
+
+```bash
+./build-stremio.sh --dual --install
+```
+
+| Port | Server | Torrents on | Cache |
+| --- | --- | --- | --- |
+| `127.0.0.1:8080` | 4.21.2 | homelab | 2 GiB at `/docker/stremio` |
+| `127.0.0.1:11470` | 4.20.19 | the TV | none, `cacheSize` 0 |
+
+Choose under **Settings** → **Server** → **EDIT_URL**. Use
+`http://127.0.0.1:8080/` for the homelab.
+
+The catch is unchanged, and it is the reason Mod 3 exists: the core
+**defaults to 11470**, so a profile nobody has edited torrents on the TV
+without saying so. Verified on 2026-09-22 — the TV had pulled a whole season
+while the homelab sat idle.
+
+`UPSTREAM_HOST=127.0.0.1 ./build-stremio.sh` is a different thing again. It
+points the proxy at the TV as well, so both ports serve the TV and the
+homelab is unreachable. Use it only to reproduce stock upstream behaviour.
+
+### Which server is actually working
+
+Neither the app nor **Settings** tells you reliably. Check during playback.
+The machine with a non-empty `selections` is doing the work:
+
+```bash
+curl -s http://192.168.0.100:11470/stats.json | grep -o '"selections":\[[^]]*'
+ssh tv 'wget -qO- http://127.0.0.1:11470/stats.json' | grep -o '"selections":\[[^]]*'
+```
+
+Check which server answers after you install. With Mod 3, **both** ports must
+report the homelab:
+
+```bash
+for p in 8080 11470; do
+  ssh tv "wget -qO- http://127.0.0.1:$p/settings" \
+    | grep -o '"serverVersion":"[^"]*"\|"cacheRoot":"[^"]*"'
+done
+```
+
+The homelab runs 4.21.2 with `cacheRoot` `/config`. The bundled server runs
+4.20.19 with a path under `/media/developer`. Seeing `/media/developer` on
+either port means the TV is serving, and it will torrent.
+
+The decisive check is which machine holds the stream while you watch:
+
+```bash
+curl -s http://192.168.0.100:11470/stats.json | grep -o '"selections":\[[^]]*'
+ssh tv 'wget -qO- http://127.0.0.1:11470/stats.json' | grep -o '"selections":\[[^]]*'
+```
+
+A non-empty `selections` is the machine doing the work. It must be the
+homelab.
+
+Under Mod 3 the bundled server never starts, which frees about 100 MB of RAM
+but leaves no local fallback. Under `--dual` it does start, so the TV can
+still serve if the homelab is down. That is the trade you are making.
 
 ## The old wrapper
 
@@ -325,13 +414,13 @@ The old wrapper could not do this. It used an HTML5 `<video>` tag in the TV
 browser, so the homelab server re-encoded every 4K release down to 1080p SDR
 H.264 and dropped bitmap subtitles.
 
-The server throttles itself: `btDownloadSpeedHardLimit` is 3.5 MB/s, about
-28 Mbps. That carries 1080p fine. A high-bitrate 4K remux may stall. Raise the
-limit under **Settings** → **Streaming** if it does.
+The homelab server used to throttle itself to 3.5 MiB/s, about 29 Mbps. That
+carried 1080p but stalled a 4K remux. It now allows 20 MiB/s. See
+[Stremio](../README.md#stremio) in the homelab README.
 
-The homelab still has `transcodeMaxWidth` at 1920, set back when the wrapper
-forced a transcode. Direct play ignores it. It only bites if a file ever falls
-back to transcoding, and then it downscales to 1080p.
+`transcodeMaxWidth` stays at 1920, and that is the right value. Direct play
+ignores it. It applies only when a file falls back to transcoding, and the
+homelab CPU cannot encode 4K in real time. Measured there.
 
 ### Where the cache goes
 
