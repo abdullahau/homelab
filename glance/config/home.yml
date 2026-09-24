@@ -133,6 +133,12 @@
               description: Web server with HTTPS
               icon: sh:caddy
               hide: false
+            stremio:
+              name: Stremio
+              description: Torrent streamer
+              url: http://homelab:11470/
+              icon: di:stremio
+              hide: false
 
         - type: rss
           limit: 70
