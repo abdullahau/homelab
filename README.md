@@ -201,11 +201,82 @@ shared libraries, so it fails to start.
 3. Set **Streaming server URL** to `http://homelab:11470`.
 4. The status must read **Connected**.
 
-The web client at `web.stremio.com` is HTTPS, so a browser blocks a plain
-HTTP server. Use the desktop app, or open the web client over HTTP.
+The web client at `web.stremio.com` is HTTPS, so a browser blocks a plain HTTP
+server. Use the desktop app, or serve the address over HTTPS on the tailnet.
+See the next section.
 
-Cache lives in `./stremio`. The default limit is 2 GiB. Change it under
-**Settings** → **Streaming** → **Cache size**.
+Cache lives in `./stremio/stremio-cache/<infoHash>/`, on the root disk. The
+default limit is 2 GiB. Change it under **Settings** → **Streaming** →
+**Cache size**.
+
+Two things about that cache surprise people. The limit is a soft target:
+eviction runs only when a new engine starts, so the directory sits over
+budget until you open something new. And every engine carries a whole-file
+selection at priority 0, so a title keeps downloading in the background after
+you stop watching, until the engine goes idle and is destroyed. Dropping an
+engine with `/<infoHash>/remove` leaves every piece on disk.
+
+### HTTPS on the tailnet, with tailscale serve
+
+The iPad has no Stremio app, so the browser is the only client there. The
+browser needs HTTPS. `tailscale serve` gives a real certificate without
+exposing anything.
+
+Run this once. The first line means `serve` never needs root again:
+
+```bash
+sudo tailscale set --operator=$USER
+tailscale serve --bg --https=443 http://127.0.0.1:11470
+```
+
+That publishes `https://homelab.napoleon-alkaline.ts.net/` to the tailnet
+only. Then set **Streaming server URL** in the client to that address, with
+the trailing slash.
+
+**Never use `tailscale funnel` here.** Funnel publishes to the internet, and
+the Stremio server has no authentication at all. It accepts a magnet from
+anyone who reaches it, so a public address lets a stranger fill the disk.
+
+Inspect or undo it:
+
+```bash
+tailscale serve status
+tailscale serve --https=443 off
+```
+
+The config lives in `tailscaled` state, so it survives a reboot. The
+certificate renews itself. The tailnet needs **HTTPS Certificates** switched
+on in the admin console, which it already is.
+
+Verified on 2026-09-27:
+
+| Check | Result |
+| --- | --- |
+| Certificate | Let's Encrypt, `CN=homelab.napoleon-alkaline.ts.net` |
+| `/settings` | HTTP 200 over HTTP/2 |
+| CORS | `access-control-allow-origin: *` for `https://web.stremio.com` |
+| Range request | HTTP 206, byte-exact |
+| Throughput | 32 MB at 135 MB/s, so the proxy adds no ceiling |
+
+Range and 206 are the ones that matter. Seeking works.
+
+`remoteHttps` stays **Disabled** and port 12470 stays unused. The serve proxy
+replaces both.
+
+#### Safari cannot play MKV
+
+This limits the iPad, not the transport. Safari's `<video>` element opens no
+MKV at any codec, and this host has no transcode path, so the web player
+fails on most releases.
+
+Copy the stream link out of the web client and open it in Infuse instead:
+
+```
+https://homelab.napoleon-alkaline.ts.net/<infoHash>/<fileIndex>
+```
+
+Infuse decodes HEVC 10-bit and DTS natively. AV1 needs an A17 Pro or M3, so
+prefer HEVC or H.264 on an older iPad.
 
 ### Download limits
 
@@ -249,13 +320,43 @@ everything now, and then nothing transcodes at all.
 
 ### Why there is no GPU
 
-The compose file passes no `/dev/dri`. Tested on 2026-09-21: the server probes
-`qsv`, `nvenc` and `vaapi` with an HEVC sample only. The Iris 6100 exposes
-H.264 VAAPI but no HEVC profile, so all three probes fail even with the GPU
-attached. Transcoding stays on the CPU.
+The compose file passes no `/dev/dri`, and attaching it changes nothing.
+Re-tested on 2026-09-27 in a throwaway container with `--device /dev/dri` and
+`--group-add 993`. The server still reported:
 
-The probe result is cached in `stremio/server-settings.json` and never re-runs.
-Delete that file to force a fresh probe.
+```
+hls-converter - Tests for hardware accelerated transcoding finished,
+                no viable acceleration profiles detected
+```
+
+The reason is the GPU, not the container. `vainfo` through the image's own
+jellyfin-ffmpeg loads iHD 22.3.0 and lists H.264, MPEG2, VC1, JPEG and VP8
+only. There is **no HEVC, VP9 or AV1 profile at all**. The server probes
+`qsv`, `nvenc` and `vaapi` with an HEVC sample, so every probe fails.
+
+Three follow-ups that look promising and are not:
+
+- **Switching the probe off.** You cannot, from settings. The gate is
+  `transcodeHardwareAccel && !allTranscodeProfiles.length`, which never
+  becomes satisfiable here, because the probe never finds a profile. Setting
+  `transcodeHardwareAccel: false` with a non-empty `allTranscodeProfiles`
+  persists, and the next start probes anyway.
+- **Pinning the profile by hand.** The server's `vaapi` profile decodes in
+  hardware. A direct request with `profile=vaapi-renderD128` against a real
+  HEVC file returns an empty playlist and logs `ERR_STREAM_PREMATURE_CLOSE`.
+- **Software decode plus hardware encode.** This does work when you call
+  ffmpeg yourself: `-vaapi_device /dev/dri/renderD128 -vf format=nv12,hwupload
+  -c:v h264_vaapi` transcodes an HEVC input fine. The server never uses that
+  path, so the capability is unreachable from Stremio.
+
+So the probe re-runs and keeps failing. It is not cached, contrary to an
+earlier note here. Measured over 43 hours of uptime: 24 runs, in bursts as
+streams start, each spawning three ffmpeg processes that fail in about a
+second. That is roughly one second of CPU every couple of hours, so leave it.
+
+Transcoding stays on the CPU. It almost never runs, because the TV
+direct-plays HEVC, AV1, 10-bit and Dolby Vision. See
+[webos/README.md](webos/README.md).
 
 ### Add-ons
 

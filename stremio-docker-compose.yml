@@ -24,7 +24,9 @@ services:
       #- NO_CORS=1
     # No /dev/dri on purpose. The server probes hardware transcoding with an
     # HEVC sample only, and this Iris 6100 exposes no HEVC VAAPI profile, so
-    # every probe fails even with the GPU attached. See the README.
+    # every probe fails even with the GPU attached. Re-tested 2026-09-27 with
+    # the device and the render group attached: still "no viable acceleration
+    # profiles detected". Do not add it again. See ../README.md#why-there-is-no-gpu.
     volumes:
       - ./stremio:/config
       - ./stremio/.server-home:/root/.stremio-server
