@@ -7,49 +7,14 @@ services:
     container_name: mediamtx
     restart: unless-stopped
     user: "1000:1000"
+    # host net: bridge NAT hid client IPs and defeated the ips: allowlist.
+    # Ports (set in mediamtx.yml): 8889 WebRTC + 8888 HLS -> /living-room/,
+    # 8554 RTSP, 8189/udp ICE, 9996 playback API, 9997 control (127.0.0.1 only)
+    network_mode: host
     environment:
       - MTX_RTSPTRANSPORTS=tcp
       - MTX_WEBRTCADDITIONALHOSTS=${HOST_LAN_IP},${HOST_TS_IP},${MACHINE_NAME_TS}
-    ports:
-      - 8554:8554 # RTSP
-      - 8888:8888 # HLS
-      - 8889:8889 # WebRTC
-      - 8189:8189/udp # WebRTC ICE
-      - 9996:9996 # playback API
-      # 9997 (control API) stays unpublished - it can rewrite config
     volumes:
       - ./mediamtx/mediamtx.yml:/mediamtx.yml:ro
       - /mnt/hdd/footage/recordings:/recordings
       - /etc/localtime:/etc/localtime:ro
-
-  # https://github.com/bcanfield/mediamtx-connect
-  mediamtx-connect:
-    image: bcanfield/mediamtx-connect:latest
-    container_name: mediamtx-connect
-    restart: unless-stopped
-    depends_on:
-      - mediamtx
-    # these env vars seed the first boot only; mediamtx/data/config.json wins
-    # afterwards. To re-apply, delete config.json and recreate the container.
-    environment:
-      - BACKEND_SERVER_MEDIAMTX_URL=http://mediamtx
-      - REMOTE_MEDIAMTX_URL=http://${MACHINE_NAME_TS}
-      - MEDIAMTX_API_PORT=9997
-      - MEDIAMTX_RECORDINGS_DIR=/recordings
-      - MEDIAMTX_SCREENSHOTS_DIR=/screenshots
-      - TZ=${TZ}
-    ports:
-      - 3000:3000
-    volumes:
-      - /mnt/hdd/footage/recordings:/recordings
-      - /mnt/hdd/footage/screenshots:/screenshots
-      - ./mediamtx/data:/data
-      - /etc/localtime:/etc/localtime:ro
-
-# Pinned so the mediamtx auth rules can name this subnet. Docker's auto
-# assignment changes it on every recreate, which would 401 mediamtx-connect.
-networks:
-  default:
-    ipam:
-      config:
-        - subnet: 172.30.0.0/16

@@ -84,7 +84,7 @@ docker compose -f plex-docker-compose.yml down
 | Jellyfin | <http://homelab:8096> | Media server |
 | Navidrome | <http://homelab:4533> | Music |
 | Transmission | <http://homelab:9091> | BitTorrent |
-| MediaMTX | <http://homelab:3000> | NVR, camera recording |
+| MediaMTX | <http://homelab:8889/living-room/> | NVR, camera recording |
 | Beszel | <http://homelab:8090> | Host and container metrics |
 | Tautulli | <http://homelab:8181> | Plex activity and history |
 | Speedtest Tracker | <http://homelab:9080/admin> | Line speed history |
@@ -104,8 +104,20 @@ create the account, click **Add System**, copy the token and key into
 off. Do not use `localhost`.
 
 **MediaMTX** records continuously and keeps 14 days. Camera credentials come
-from `CAMERA_USER` / `CAMERA_PASSWORD` / `CAMERA_HOST` in `.env`. Viewing is
-restricted to the LAN, the tailnet, and the `mediamtx-connect` container.
+from `CAMERA_USER` / `CAMERA_PASSWORD` / `CAMERA_HOST` in `.env`.
+
+Uses `network_mode: host`. On a bridge network, docker-proxy rewrote every
+client address to the bridge gateway, so the `ips:` allowlist in
+`mediamtx.yml` matched the public internet as readily as the LAN - the camera
+and its 14-day archive were readable from anywhere over IPv6. On the host,
+MediaMTX sees real source addresses. Verified 2026-09-30 from an off-site
+host: public IPv6 gets 401, tailnet gets 200. Do not move it back to a bridge.
+
+Live view is MediaMTX's own WebRTC page at <http://homelab:8889/living-room/>
+(HLS on `:8888` is the fallback).
+`mediamtx-connect` was removed 2026-09-30 - with one camera its only real
+value was the recordings browser. The playback API (`:9996/list`,
+`:9996/get`) still serves the archive. Control API binds `127.0.0.1:9997`.
 
 ## Edge stack (cloudflared + Caddy)
 

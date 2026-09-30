@@ -96,13 +96,8 @@
               hide: false
             mediamtx:
               name: MediaMTX
-              description: Network video recorder
-              icon: sh:mediamtx
-              hide: true
-            mediamtx-connect:
-              name: MediaMTX
-              description: NVR system
-              url: http://homelab:3000
+              description: NVR, camera recording
+              url: http://homelab:8889/living-room/
               icon: sh:mediamtx
               hide: false
             beszel:
