@@ -58,12 +58,6 @@
               url: http://homelab:8080
               icon: sh:glance
               hide: false
-            jellyfin:
-              name: Jellyfin
-              description: Multimedia server
-              url: http://homelab:8096
-              icon: sh:jellyfin
-              hide: false
             plex:
               name: Plex
               description: Multimedia server

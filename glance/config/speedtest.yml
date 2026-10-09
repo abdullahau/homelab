@@ -95,5 +95,5 @@
     <div class="size-h6 color-subdue text-center">
       {{ .JSON.String "latest.server" }} ·
       <span {{ .JSON.String "latest.timestamp" | parseTime "rfc3339" | toRelativeTime }}></span> ago ·
-      30-day avg of {{ .JSON.Int "average.count" }}
+      {{ .JSON.Int "average.count" }} tests
     </div>
