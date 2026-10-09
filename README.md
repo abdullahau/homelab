@@ -150,9 +150,8 @@ idles at under 1 MiB.
 - Glance reads `glance/assets/speedtest/summary.json` (the latest result and
   the 30-day averages) from its own `/assets/` path. It needs no API token.
 - Run a test now: `docker exec speedtest-cli speedtest.sh`.
-- `./docker-manager.sh update` rebuilds the image on the newest Alpine. To
-  change the Ookla CLI version, edit `OOKLA_VERSION` in
-  `speedtest-cli/Dockerfile`, then run `update`.
+- `./docker-manager.sh update` rebuilds the image with the newest Alpine and
+  the newest Ookla CLI. Nothing is pinned.
 
 Pick servers that your own ISP does not host. An ISP's own server is inside
 its network, so the test skips the internet and can read much too high. To

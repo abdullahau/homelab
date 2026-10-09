@@ -1,12 +1,12 @@
-FROM alpine:3
+FROM alpine:latest
 
-# Same Ookla CLI build as Speedtest Tracker, so old and new results compare.
-ARG OOKLA_VERSION=1.2.0
-
+# Ookla has no "latest" URL, so take the link from its official CLI page.
 RUN apk upgrade --no-cache \
  && apk add --no-cache jq tzdata \
- && wget -qO- "https://install.speedtest.net/app/cli/ookla-speedtest-${OOKLA_VERSION}-linux-x86_64.tgz" \
-    | tar -xz -C /usr/local/bin speedtest
+ && url=$(wget -qO- https://www.speedtest.net/apps/cli \
+    | grep -o 'https://install.speedtest.net/app/cli/ookla-speedtest-[0-9.]*-linux-x86_64.tgz' | head -1) \
+ && [ -n "$url" ] \
+ && wget -qO- "$url" | tar -xz -C /usr/local/bin speedtest
 
 COPY speedtest.sh /usr/local/bin/speedtest.sh
 COPY crontab /etc/crontabs/root
