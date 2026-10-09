@@ -68,7 +68,7 @@ things prevent this here:
 ./docker-manager.sh up       # start all
 ./docker-manager.sh down     # stop all
 ./docker-manager.sh pull     # pull images
-./docker-manager.sh update   # pull, then restart
+./docker-manager.sh update   # pull, rebuild local images, then restart
 ./docker-manager.sh restart  # down, then up
 ./docker-manager.sh status   # ps for each file
 ./docker-manager.sh logs     # last 50 lines each
@@ -150,6 +150,9 @@ idles at under 1 MiB.
 - Glance reads `glance/assets/speedtest/summary.json` (the latest result and
   the 30-day averages) from its own `/assets/` path. It needs no API token.
 - Run a test now: `docker exec speedtest-cli speedtest.sh`.
+- `./docker-manager.sh update` rebuilds the image on the newest Alpine. To
+  change the Ookla CLI version, edit `OOKLA_VERSION` in
+  `speedtest-cli/Dockerfile`, then run `update`.
 
 Pick servers that your own ISP does not host. An ISP's own server is inside
 its network, so the test skips the internet and can read much too high. To

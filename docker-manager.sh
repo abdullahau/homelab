@@ -40,7 +40,7 @@ case "${1:-}" in
     pull)    run_all Pulling pull ;;
     logs)    run_all Logs logs --tail 50 ;;
     status)  run_all Status ps ;;
-    update)  run_all Pulling pull; run_all Restarting up -d ;;
+    update)  run_all Pulling pull; run_all Building build --pull --no-cache; run_all Restarting up -d ;;
     restart) run_all Stopping down; run_all Starting up -d ;;
     render)  ./scripts/render.sh; exit $? ;;
     *)
