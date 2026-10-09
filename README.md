@@ -320,8 +320,12 @@ tailscale serve --https=443 off
 renews itself. The proxy passes range requests (HTTP 206), so seeking works.
 In a test, it moved 135 MB/s, so it does not limit the speed.
 
-Keep `remoteHttps` set to **Disabled** in the server settings, and leave port
-`12470` unused. The `tailscale serve` proxy replaces both.
+#### HTTPS endpoint (optional)
+
+**Settings → Streaming → HTTPS endpoint** gives the server a second HTTPS
+address on port `12470`. It works on the LAN only. Use it for a LAN device that
+is not on your tailnet. When it is on, every client shows the address as
+**Remote URL**. On this host, it is **Disabled**.
 
 #### Safari cannot play MKV
 
