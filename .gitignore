@@ -15,6 +15,9 @@
 !scripts/*.sh
 !scripts/pre-commit
 !webos/*.sh
+!speedtest-cli/Dockerfile
+!speedtest-cli/*.sh
+!speedtest-cli/crontab
 
 # Templates only, never the rendered output
 !*.template

@@ -12,7 +12,7 @@
             - type: local
               name: Ubuntu           
 
-        - $include: speedtest-tracker.yml
+        - $include: speedtest.yml
 
         - type: dns-stats
           service: adguard

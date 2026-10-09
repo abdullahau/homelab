@@ -1,0 +1,14 @@
+name: speedtest-cli
+
+services:
+  speedtest-cli:
+    build: ./speedtest-cli
+    image: speedtest-cli:local
+    pull_policy: build
+    container_name: speedtest-cli
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - ./speedtest-cli/data:/data
+      - ./glance/assets/speedtest:/out

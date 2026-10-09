@@ -87,7 +87,8 @@ docker compose -f plex-docker-compose.yml down
 | MediaMTX | <http://homelab:8889/living-room/> | NVR, camera recording |
 | Beszel | <http://homelab:8090> | Host and container metrics |
 | Tautulli | <http://homelab:8181> | Plex activity and history |
-| Speedtest Tracker | <http://homelab:9080/admin> | Line speed history |
+| Speedtest Tracker | <http://homelab:9080/admin> | Line speed history (being replaced by speedtest-cli) |
+| speedtest-cli | Glance widget | Line speed test, 4 times a day |
 | Stremio | <http://homelab:11470> | Streaming server for Stremio clients |
 
 ### Notes
@@ -118,6 +119,26 @@ Live view is MediaMTX's own WebRTC page at <http://homelab:8889/living-room/>
 `mediamtx-connect` was removed 2026-09-30 - with one camera its only real
 value was the recordings browser. The playback API (`:9996/list`,
 `:9996/get`) still serves the archive. Control API binds `127.0.0.1:9997`.
+
+**speedtest-cli** replaces Speedtest Tracker. Speedtest Tracker is a Laravel app.
+Its queue worker and PHP-FPM pool held 155 MiB (peak 212 MiB) all day for 4 tests.
+speedtest-cli is Alpine, busybox `crond` and the same Ookla CLI 1.2.0. It
+idles at under 1 MiB (measured 2026-10-09).
+
+- The schedule is `5 0,6,12,18 * * *` (in `speedtest-cli/crontab`). The `:05`
+  keeps it clear of Speedtest Tracker's `:00` run while both are up.
+- Each run tests one of the 5 off-net du servers, in random order. If a
+  server fails, the script tries the next one.
+- Results are the raw Ookla JSON, one per line, in
+  `speedtest-cli/data/history.jsonl`. The script deletes results older than
+  30 days.
+- Glance reads `glance/assets/speedtest/summary.json` (the latest result and
+  the 30-day averages) from its own `/assets/` path. It needs no API token.
+- Run a test now: `docker exec speedtest-cli speedtest.sh`.
+
+The server list excludes e&'s own Ookla servers. They are on-net and report
+~935/500, but the real line is ~310/116. Excluded: 17336 Dubai, 33712 Sharjah,
+34238 Ajman, 34240 Fujairah, 28422 Abu Dhabi, 34239 Al Ain. Do not add them.
 
 ## Edge stack (cloudflared + Caddy)
 
