@@ -81,7 +81,6 @@ docker compose -f plex-docker-compose.yml down
 | Glance | <http://homelab:8080> | Dashboard |
 | AdGuard Home | <http://homelab> | DNS, ad and tracker blocking |
 | Plex | <http://homelab:32400> | Media server |
-| Jellyfin | <http://homelab:8096> | Media server |
 | Navidrome | <http://homelab:4533> | Music |
 | Transmission | <http://homelab:9091> | BitTorrent |
 | MediaMTX | <http://homelab:8889/living-room/> | NVR, camera recording |
@@ -89,6 +88,10 @@ docker compose -f plex-docker-compose.yml down
 | Tautulli | <http://homelab:8181> | Plex activity and history |
 | speedtest-cli | Glance widget | Line speed test, 4 times a day |
 | Stremio | <http://homelab:11470> | Streaming server for Stremio clients |
+
+`homelab` is the MagicDNS name of this host. Use the name or tailnet IP of your
+host. To run Jellyfin in place of Plex, see
+[Jellyfin instead of Plex](#jellyfin-instead-of-plex).
 
 ### Notes
 
@@ -137,6 +140,11 @@ The server list excludes e&'s own Ookla servers. They are on-net and report
 ~935/500, but the real line is ~310/116. Excluded: 17336 Dubai, 33712 Sharjah,
 34238 Ajman, 34240 Fujairah, 28422 Abu Dhabi, 34239 Al Ain. Do not add them.
 
+The server IDs are for the UAE. In another country, list the servers near you
+with `docker exec speedtest-cli speedtest -L --accept-license`. Then change
+`SERVERS=` in `speedtest-cli/speedtest.sh` and rebuild. Skip servers that your
+own ISP hosts, because they can read high.
+
 ## Edge stack (cloudflared + Caddy)
 
 `edge-stack-docker-compose.yml` holds two containers:
@@ -153,10 +161,11 @@ Cloudflare terminates TLS at the edge, so Caddy runs with `auto_https off`.
 Send a Host header to pick a route without touching the tunnel:
 
 ```bash
-curl -H "Host: jellyfin.abdullah.diy" http://localhost:8081/
+curl -H "Host: plex.abdullah.run" http://localhost:8081/
 ```
 
-An unrouted hostname returns `404` from the catch-all block.
+An unrouted hostname returns `404` from the catch-all block. The Plex block is
+commented out, so this example returns `404` until you enable it.
 
 Host port `8081` is for local tests only. `cloudflared` reaches Caddy over the
 compose network, not the host.
@@ -193,8 +202,10 @@ blocks in `edge-stack/Caddyfile` to re-enable them.
 
 | Hostname | Origin | Why that address |
 | --- | --- | --- |
-| `plex.abdullah.diy` | `${HOST_LAN_IP}:32400` | Plex uses `network_mode: host`. No container name to resolve. |
-| `jellyfin.abdullah.diy` | `${HOST_LAN_IP}:8096` | Jellyfin is a separate compose project, so it is on another network. |
+| `plex.abdullah.run` | `${HOST_LAN_IP}:32400` | Plex uses `network_mode: host`. No container name to resolve. |
+| `jellyfin.abdullah.run` | `${HOST_LAN_IP}:8096` | Only if you run Jellyfin. It is a separate compose project, so it is on another network. |
+
+Replace `abdullah.run` with your own domain.
 
 Every hostname needs two things: a block in `edge-stack/Caddyfile`, and a
 public hostname in the dashboard pointing at `http://caddy:80`.
@@ -212,261 +223,290 @@ docker compose -f edge-stack-docker-compose.yml restart caddy
 ## Stremio
 
 `stremio-docker-compose.yml` runs the Stremio **streaming server** only. The
-server fetches and remuxes streams. It holds no catalogue and no add-on.
-Catalogues, the player and the add-ons all live in the Stremio client.
+server fetches and remuxes streams. It holds no catalogue and no add-on. The
+catalogues, the player and the add-ons all live in the Stremio client.
 
-It uses `network_mode: host`. The server builds an HTTPS address from the IP
-it sees. In bridge mode that is the container IP, which no browser reaches.
-A `ports:` block is ignored, like AdGuard. The server binds `11470` (HTTP)
-and `12470` (HTTPS).
+The server uses `network_mode: host`. It builds its HTTPS address from the IP
+that it sees. In bridge mode, that is the container IP, and no client can
+reach it. Docker ignores a `ports:` block in host mode. The server binds
+`11470` (HTTP) and `12470` (HTTPS).
 
-Do not mount the host `ffmpeg`. The image ships jellyfin-ffmpeg 4.4.1 at
-`/usr/lib/jellyfin-ffmpeg/`. A bind mount copies the binary without its
-shared libraries, so it fails to start.
+Do not mount the host `ffmpeg`. The image ships jellyfin-ffmpeg at
+`/usr/lib/jellyfin-ffmpeg/`. A bind mount copies the binary without its shared
+libraries, so it does not start.
 
-### Point a client at this server
+### Connect a client
 
-1. Open <https://web.stremio.com>, or the desktop or Android app.
+1. Open the Stremio desktop or Android app, or <https://web.stremio.com>.
 2. Go to **Settings** → **Streaming**.
-3. Set **Streaming server URL** to `http://homelab:11470`.
-4. The status must read **Connected**.
+3. Set **Streaming server URL** to `http://<host>:11470`. Use the MagicDNS
+   name or the tailnet IP of the server.
+4. Make sure that the status shows **Connected**.
 
-The web client at `web.stremio.com` is HTTPS, so a browser blocks a plain HTTP
-server. Use the desktop app, or serve the address over HTTPS on the tailnet.
-See the next section.
+The web client loads over HTTPS, so the browser blocks a plain HTTP server.
+The desktop and Android apps do not have this limit. For a browser, serve the
+server over HTTPS on the tailnet. See
+[HTTPS on the tailnet](#https-on-the-tailnet-with-tailscale-serve).
 
-Cache lives in `./stremio/stremio-cache/<infoHash>/`, on the root disk. The
-default limit is 2 GiB. Change it under **Settings** → **Streaming** →
-**Cache size**.
+### Cache
 
-Two things about that cache surprise people. The limit is a soft target:
-eviction runs only when a new engine starts, so the directory sits over
-budget until you open something new. And every engine carries a whole-file
-selection at priority 0, so a title keeps downloading in the background after
-you stop watching, until the engine goes idle and is destroyed. Dropping an
-engine with `/<infoHash>/remove` leaves every piece on disk.
+The cache is in `./stremio/stremio-cache/<infoHash>/`. The default limit is
+2 GiB. Change it under **Settings** → **Streaming** → **Cache size**. Make sure
+that the disk has enough free space.
 
-### HTTPS on the tailnet, with tailscale serve
+Two things about the cache are not obvious:
 
-The iPad has no Stremio app, so the browser is the only client there. The
-browser needs HTTPS. `tailscale serve` gives a real certificate without
-exposing anything.
+- The limit is a soft target. The server deletes old files only when a new
+  stream starts. Until then, the folder can stay over the limit.
+- A title keeps downloading after you stop watching. It stops when the server
+  closes the idle stream. A `/<infoHash>/remove` request closes the stream, but
+  it leaves the downloaded pieces on disk.
 
-Run this once. The first line means `serve` never needs root again:
+### HTTPS on the tailnet with tailscale serve
+
+A browser client needs HTTPS. Examples are web.stremio.com on a laptop, and
+an iPad or iPhone, which have no Stremio app. `tailscale serve` gives the
+server a real certificate. Only devices on your tailnet can reach it.
+
+Before you start, turn on **MagicDNS** and **HTTPS Certificates** on the
+**DNS** page of the Tailscale admin console.
+
+Run these commands once on the host. The first command lets your user run
+`tailscale serve` without root:
 
 ```bash
 sudo tailscale set --operator=$USER
 tailscale serve --bg --https=443 http://127.0.0.1:11470
 ```
 
-That publishes `https://homelab.napoleon-alkaline.ts.net/` to the tailnet
-only. Then set **Streaming server URL** in the client to that address, with
-the trailing slash.
+The server is now at `https://<host>.<tailnet>.ts.net/`. Run
+`tailscale serve status` to see the exact address. Set **Streaming server
+URL** to that address, with the trailing slash.
 
-**Never use `tailscale funnel` here.** Funnel publishes to the internet, and
-the Stremio server has no authentication at all. It accepts a magnet from
-anyone who reaches it, so a public address lets a stranger fill the disk.
+**Never use `tailscale funnel` here.** Funnel publishes the server to the
+internet, and the Stremio server has no authentication. It accepts a magnet
+link from anyone who reaches it, so a stranger can fill your disk.
 
-Inspect or undo it:
+Check or remove the setting:
 
 ```bash
 tailscale serve status
 tailscale serve --https=443 off
 ```
 
-The config lives in `tailscaled` state, so it survives a reboot. The
-certificate renews itself. The tailnet needs **HTTPS Certificates** switched
-on in the admin console, which it already is.
+`tailscaled` keeps the setting, so it survives a reboot. The certificate
+renews itself. The proxy passes range requests (HTTP 206), so seeking works.
+In a test, it moved 135 MB/s, so it does not limit the speed.
 
-Verified on 2026-09-27:
-
-| Check | Result |
-| --- | --- |
-| Certificate | Let's Encrypt, `CN=homelab.napoleon-alkaline.ts.net` |
-| `/settings` | HTTP 200 over HTTP/2 |
-| CORS | `access-control-allow-origin: *` for `https://web.stremio.com` |
-| Range request | HTTP 206, byte-exact |
-| Throughput | 32 MB at 135 MB/s, so the proxy adds no ceiling |
-
-Range and 206 are the ones that matter. Seeking works.
-
-`remoteHttps` stays **Disabled** and port 12470 stays unused. The serve proxy
-replaces both.
+Keep `remoteHttps` set to **Disabled** in the server settings, and leave port
+`12470` unused. The `tailscale serve` proxy replaces both.
 
 #### Safari cannot play MKV
 
-This limits the iPad, not the transport. Safari's `<video>` element opens no
-MKV at any codec, and this host has no transcode path, so the web player
-fails on most releases.
+Safari's `<video>` element cannot play MKV files, whatever the codec. If the
+server cannot transcode the file, the web player fails on most releases. This
+is a Safari limit, not a network problem.
 
-Copy the stream link out of the web client and open it in Infuse instead:
+On an iPad or iPhone, copy the stream link from the web client. Open it in a
+player that plays MKV, such as Infuse or VLC:
 
+```text
+https://<host>.<tailnet>.ts.net/<infoHash>/<fileIndex>
 ```
-https://homelab.napoleon-alkaline.ts.net/<infoHash>/<fileIndex>
-```
 
-Infuse decodes HEVC 10-bit and DTS natively. AV1 needs an A17 Pro or M3, so
-prefer HEVC or H.264 on an older iPad.
+Infuse plays HEVC 10-bit and DTS. AV1 needs an A17 Pro or M3 chip, or newer.
 
 ### Download limits
 
-Raised on 2026-09-22, after the TV moved to a native client that direct-plays
-4K. The old values capped Stremio at about 17% of the line.
+Two server settings limit the BitTorrent download speed:
 
-| Setting | Was | Now |
-| --- | --- | --- |
-| `btDownloadSpeedSoftLimit` | 2.5 MiB/s (21 Mbps) | 12 MiB/s (101 Mbps) |
-| `btDownloadSpeedHardLimit` | 3.5 MiB/s (29 Mbps) | 20 MiB/s (168 Mbps) |
+| Setting | Value in this repo |
+| --- | --- |
+| `btDownloadSpeedSoftLimit` | 12 MiB/s (101 Mbps) |
+| `btDownloadSpeedHardLimit` | 20 MiB/s (168 Mbps) |
 
-The line measures about 171 Mbps on a single stream. A 4K WEB-DL needs
-15-25 Mbps and a 4K remux 50-100 Mbps, so the old 29 Mbps ceiling stalled
-exactly the files the TV can now play untouched. The new hard limit leaves
-headroom instead of taking the whole line.
+Set the hard limit above the bitrate of the files that you play, and below
+your line speed. A 4K WEB-DL needs 15-25 Mbps. A 4K remux needs 50-100 Mbps.
+If the limit is too low, 4K files stall.
 
-Apply a change without restarting the container:
+Change the values without a restart. The values are in bytes per second:
 
 ```bash
-curl -X POST http://homelab:11470/settings -H "Content-Type: application/json" \
+curl -X POST http://<host>:11470/settings -H "Content-Type: application/json" \
   -d '{"btDownloadSpeedSoftLimit":12582912,"btDownloadSpeedHardLimit":20971520}'
 ```
 
-The server writes it to `stremio/server-settings.json`, so it survives a
-restart.
+The server writes the values to `stremio/server-settings.json`, so they
+survive a restart.
 
-### Why transcodeMaxWidth stays at 1920
+### Transcoding
 
-Raising it to 3840 would stop a fallback transcode from downscaling 4K. It
-would also make that transcode unplayable. Measured on 2026-09-22 with a real
-3840x2076 HEVC 10-bit source, 60 seconds, `libx264 -preset ultrafast`:
+The server transcodes only when a client cannot play the file directly. Most
+modern TVs and apps play files directly, so transcoding is rare.
 
-| Target | Speed | Result |
-| --- | --- | --- |
-| 1920 wide | 1.02x real time, 25 fps | just keeps up |
-| 3840 wide | 0.58x real time, 14 fps | stutters |
+`transcodeMaxWidth` sets the largest output width. On a weak CPU, keep it at
+`1920`. A 4K software transcode needs about 2x the CPU of a 1080p transcode.
+To test your CPU, transcode 60 seconds of a 4K file with ffmpeg. The speed
+must stay above 1.0x real time.
 
-The i5-5287U has two cores and no working hardware encoder, so 1920 is the
-most it sustains. This only matters on a fallback: the TV direct-plays almost
-everything now, and then nothing transcodes at all.
+On this host (i5-5287U, 2 cores), measured on 2026-09-22 with `libx264
+-preset ultrafast`: 1920 wide ran at 1.02x, and 3840 wide ran at 0.58x and
+stuttered. Keep `1920` here.
 
-### Why there is no GPU
+#### Hardware transcoding
 
-The compose file passes no `/dev/dri`, and attaching it changes nothing.
-Re-tested on 2026-09-27 in a throwaway container with `--device /dev/dri` and
-`--group-add 993`. The server still reported:
+The server tests `qsv`, `nvenc` and `vaapi` with an HEVC sample. If the GPU
+cannot decode HEVC, every test fails and the server uses the CPU.
 
+To check an Intel or AMD GPU, run `vainfo` from the image:
+
+```bash
+docker run --rm --device /dev/dri --entrypoint /usr/lib/jellyfin-ffmpeg/vainfo stremio/server:latest
 ```
-hls-converter - Tests for hardware accelerated transcoding finished,
-                no viable acceleration profiles detected
-```
 
-The reason is the GPU, not the container. `vainfo` through the image's own
-jellyfin-ffmpeg loads iHD 22.3.0 and lists H.264, MPEG2, VC1, JPEG and VP8
-only. There is **no HEVC, VP9 or AV1 profile at all**. The server probes
-`qsv`, `nvenc` and `vaapi` with an HEVC sample, so every probe fails.
+If the list has a `VAProfileHEVC` entry, add `/dev/dri` under `devices:` and
+the render group under `group_add:` in the compose file. If it does not, do
+not add the device. It changes nothing.
 
-Three follow-ups that look promising and are not:
+On this host, the Broadwell Iris 6100 has no HEVC profile. Re-tested on
+2026-09-27 with the device and the render group: still "no viable
+acceleration profiles detected". Do not add `/dev/dri` again. These two
+workarounds also fail:
 
-- **Switching the probe off.** You cannot, from settings. The gate is
-  `transcodeHardwareAccel && !allTranscodeProfiles.length`, which never
-  becomes satisfiable here, because the probe never finds a profile. Setting
-  `transcodeHardwareAccel: false` with a non-empty `allTranscodeProfiles`
-  persists, and the next start probes anyway.
-- **Pinning the profile by hand.** The server's `vaapi` profile decodes in
-  hardware. A direct request with `profile=vaapi-renderD128` against a real
-  HEVC file returns an empty playlist and logs `ERR_STREAM_PREMATURE_CLOSE`.
-- **Software decode plus hardware encode.** This does work when you call
-  ffmpeg yourself: `-vaapi_device /dev/dri/renderD128 -vf format=nv12,hwupload
-  -c:v h264_vaapi` transcodes an HEVC input fine. The server never uses that
-  path, so the capability is unreachable from Stremio.
+- **Switch the test off.** Settings cannot do it. The server tests again at
+  the next start.
+- **Set the `vaapi` profile by hand.** The request returns an empty playlist
+  and logs `ERR_STREAM_PREMATURE_CLOSE`.
 
-So the probe re-runs and keeps failing. It is not cached, contrary to an
-earlier note here. Measured over 43 hours of uptime: 24 runs, in bursts as
-streams start, each spawning three ffmpeg processes that fail in about a
-second. That is roughly one second of CPU every couple of hours, so leave it.
-
-Transcoding stays on the CPU. It almost never runs, because the TV
-direct-plays HEVC, AV1, 10-bit and Dolby Vision. See
-[webos/README.md](webos/README.md).
+The failed tests use about 1 second of CPU every few hours, so leave them.
 
 ### Add-ons
 
-Add-ons attach to your Stremio **account**, not to this server. Install one
-once, and every device that signs in to the same account gets it. Nothing
-changes in the compose file.
+Add-ons attach to your Stremio **account**, not to this server. Install an
+add-on once, and every device that signs in to the same account gets it. The
+compose file does not change.
 
 #### Torrentio without a debrid service
 
-This is the plain setup. Torrentio hands magnet links to the streaming
+This is the basic setup. Torrentio sends magnet links to the streaming
 server, and the server downloads from the public swarm.
 
 1. Open <https://web.stremio.com> and sign in.
 2. Open <https://torrentio.strem.fun/configure> in a second tab.
-3. Pick your providers. Leave the rest at the default for a first run.
+3. Select your providers. For a first run, keep the other defaults.
 4. Leave **Debrid Provider** empty.
-5. Click **Install** at the bottom. The browser hands the link to Stremio.
+5. Click **Install** at the bottom. The browser sends the link to Stremio.
 6. Stremio opens an **Install Addon** window. Click the green **Install**
    button.
 
-If the **Install** button does nothing, copy the URL it generates. Add it by
-hand: **Add-ons** → **Add add-on** → paste → **Install**.
+If **Install** does nothing, copy the URL that it makes. Add it by hand:
+**Add-ons** → **Add add-on** → paste → **Install**.
 
-> Torrentio streams from public torrent swarms. Every peer sees your home IP.
-> A debrid service hides it.
+> Torrentio streams from public torrent swarms. Every peer sees your public
+> IP. A debrid service hides it.
 
 #### Torrentio with Real-Debrid
 
-Use this if you hold a Real-Debrid account. Real-Debrid fetches the file, so
-your IP never joins the swarm.
+Use this setup if you have a Real-Debrid account. Real-Debrid downloads the
+file, so your IP never joins the swarm.
 
 1. Open <https://torrentio.strem.fun/configure>.
 2. Near the bottom, set **Debrid Provider** to **Real Debrid**. A new text
-   box appears under it.
+   box opens below it.
 3. Copy your API key from <https://real-debrid.com/apitoken>.
 4. Paste the key into the **RealDebrid API Key** box.
-5. Under **Debrid Options**, check **Don't show download to debrid links**.
+5. Under **Debrid Options**, select **Don't show download to debrid links**.
    Leave the other boxes clear.
 6. Click **Install**. Stremio opens an **Install Addon** window. Click the
    green **Install** button.
 
-#### Remove WatchHub
+Torrentio is a community add-on. Install it only from the official configure
+page above. Do not use mirrors.
 
-Stremio ships WatchHub by default. It clutters the stream list. Remove it:
+#### Remove WatchHub (optional)
+
+Stremio installs WatchHub by default. It adds many entries to the stream list.
+To remove it:
 
 1. Click the puzzle piece at the top right.
 2. Open **My Addons**.
 3. Find **WatchHub** and click **Uninstall**.
-
-Torrentio is a community add-on. Install it from the official configure page
-above. Do not use mirrors.
 
 ## Torrent search
 
 - [BT4G: Torrent Search Engine](https://bt4gprx.com/)
 - [Magnetz](https://magnetz.eu/)
 
-## Samsung TV Jellyfin client
+## Jellyfin instead of Plex
 
-1) Enable developer mode and set the Developer's Host PC IP address to your computer's IP address.
-    - On the TV, open the "Smart Hub".
-    - Select the "Apps" panel.
-    - In the "Apps" panel, enter "12345" using the remote control or the on-screen number keypad.
-    - The developer mode configuration popup appears.
-    - Switch "Developer mode" to "On".
-    - Enter the IP address of the computer that you want to connect to the TV, and click "OK".
-    - Reboot the TV.
-    - When you open the "Apps" panel after the reboot, "Develop Mode" is marked at the top of the screen.
+This repo runs Plex. Jellyfin is a free, open-source option. Its compose file
+is kept in `compose-files/jellyfin-docker-compose.yml.bak`.
 
+1. Copy the file to the top level. `docker-manager.sh` starts every top-level
+   `*-docker-compose.yml`:
 
-2) OPTION 1: Using TizenBrew Device Manager:
-    - Download the latest TizenBrew for your OS from the [releases page](https://github.com/reisxd/TizenBrew/releases)
-    - Change access permission of the script to execute (`chmod +x SCRIPT-FILENAME`)
-    - Run TizenBrew script, open `http://localhost:8091/ui/dist/index.html` in the browser.
-    - Connect to your TV through its LAN IP address
-    - Download the right Jellyfin widget package (`.wgt`) from the [releases page](https://github.com/jeppevinkel/jellyfin-tizen-builds/releases)
-    - Click `Select file to install`, select the widget package and let TizenBrew complete installation
-    - Further instruction can be found [here](https://app.notion.com/p/TizenBrew-Guide-30437864d8618033bb03e818e894fd5c)
+   ```bash
+   cp compose-files/jellyfin-docker-compose.yml.bak jellyfin-docker-compose.yml
+   ```
 
-3) OPTION 2: Using Docker:
-    - Run `docker run --rm georift/install-jellyfin-tizen <samsung tv ip>`
-    - Or run with optional arguments `docker run --rm georift/install-jellyfin-tizen <samsung tv ip> [build option] [tag url] [certificate password]`
-    - More installation instructions can be found on [Georift's](https://tim.wants.coffee/posts/install-jellyfin-on-a-samsung-tv/) Github [repo](https://github.com/Georift/install-jellyfin-tizen).
+2. Change the media bind mounts to match your folders.
+3. Start it:
+
+   ```bash
+   docker compose -f jellyfin-docker-compose.yml up -d
+   ```
+
+4. Open `http://<host>:8096` and complete the setup wizard.
+
+Notes:
+
+- Port `8096` is the web UI. Port `7359/udp` lets LAN clients find the server.
+- The file passes no `/dev/dri`, so transcodes use the CPU. Set the client
+  bitrate to the maximum, so that clients play files directly.
+- To show it in Glance, add a `jellyfin:` entry to the `docker-containers`
+  widget in `glance/config/home.yml`.
+- To publish it, uncomment the Jellyfin block in `edge-stack/Caddyfile`. See
+  [Routes](#routes).
+- To stop Plex, run `docker compose -f plex-docker-compose.yml down`. Then move
+  the file to `compose-files/plex-docker-compose.yml.bak`.
+
+### Samsung TV client (Tizen)
+
+Jellyfin has no app in the Samsung store. Install it in developer mode.
+
+1. Turn on developer mode:
+   1. On the TV, open **Smart Hub**, then the **Apps** panel.
+   2. Enter `12345` with the remote or the on-screen keypad.
+   3. Set **Developer mode** to **On**.
+   4. Enter the IP address of the computer that installs the app. Click **OK**.
+   5. Restart the TV. The **Apps** panel now shows **Develop Mode** at the top.
+
+2. Install the app. Use one of these options.
+
+   **Option 1: TizenBrew**
+
+   1. Download TizenBrew for your OS from the
+      [releases page](https://github.com/reisxd/TizenBrew/releases).
+   2. Make the script executable: `chmod +x <script>`.
+   3. Run the script, then open
+      `http://localhost:8091/ui/dist/index.html` in a browser.
+   4. Connect to the TV with its LAN IP address.
+   5. Download the Jellyfin widget package (`.wgt`) from the
+      [releases page](https://github.com/jeppevinkel/jellyfin-tizen-builds/releases).
+   6. Click **Select file to install**, select the package, and wait for the
+      install to finish.
+
+   For more help, see the
+   [TizenBrew guide](https://app.notion.com/p/TizenBrew-Guide-30437864d8618033bb03e818e894fd5c).
+
+   **Option 2: Docker**
+
+   ```bash
+   docker run --rm georift/install-jellyfin-tizen <samsung-tv-ip>
+   # Optional arguments:
+   docker run --rm georift/install-jellyfin-tizen <samsung-tv-ip> [build option] [tag url] [certificate password]
+   ```
+
+   For more help, see the
+   [blog post](https://tim.wants.coffee/posts/install-jellyfin-on-a-samsung-tv/)
+   and the [GitHub repo](https://github.com/Georift/install-jellyfin-tizen).

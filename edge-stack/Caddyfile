@@ -4,11 +4,12 @@
 }
 
 # Disabled: Cloudflare's terms restrict streaming video through the CDN.
-# http://plex.abdullah.diy {
+# http://plex.abdullah.run {
 # 	reverse_proxy {$HOST_LAN_IP}:32400
 # }
 
-# http://jellyfin.abdullah.diy {
+# Only if you run Jellyfin. See README.md#jellyfin-instead-of-plex.
+# http://jellyfin.abdullah.run {
 # 	reverse_proxy {$HOST_LAN_IP}:8096
 # }
 

@@ -26,7 +26,7 @@ services:
     # HEVC sample only, and this Iris 6100 exposes no HEVC VAAPI profile, so
     # every probe fails even with the GPU attached. Re-tested 2026-09-27 with
     # the device and the render group attached: still "no viable acceleration
-    # profiles detected". Do not add it again. See ../README.md#why-there-is-no-gpu.
+    # profiles detected". Do not add it again. See README.md#hardware-transcoding.
     volumes:
       - ./stremio:/config
       - ./stremio/.server-home:/root/.stremio-server
