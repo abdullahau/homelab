@@ -88,11 +88,10 @@
               url: http://homelab/
               icon: sh:adguard-home
               hide: false
-            speedtest-tracker:
-              name: Speedtest Tracker
+            speedtest-cli:
+              name: Speedtest
               description: Track internet speed
-              url: http://homelab:9080/admin
-              icon: sh:speedtest-tracker
+              icon: sh:speedtest
               hide: false
             mediamtx:
               name: MediaMTX

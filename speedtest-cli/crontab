@@ -1,2 +1,1 @@
-# :05 keeps clear of Speedtest Tracker's :00 run while both are up.
 5 0,6,12,18 * * * /usr/local/bin/speedtest.sh > /proc/1/fd/1 2>&1

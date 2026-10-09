@@ -87,7 +87,6 @@ docker compose -f plex-docker-compose.yml down
 | MediaMTX | <http://homelab:8889/living-room/> | NVR, camera recording |
 | Beszel | <http://homelab:8090> | Host and container metrics |
 | Tautulli | <http://homelab:8181> | Plex activity and history |
-| Speedtest Tracker | <http://homelab:9080/admin> | Line speed history (being replaced by speedtest-cli) |
 | speedtest-cli | Glance widget | Line speed test, 4 times a day |
 | Stremio | <http://homelab:11470> | Streaming server for Stremio clients |
 
@@ -120,13 +119,14 @@ Live view is MediaMTX's own WebRTC page at <http://homelab:8889/living-room/>
 value was the recordings browser. The playback API (`:9996/list`,
 `:9996/get`) still serves the archive. Control API binds `127.0.0.1:9997`.
 
-**speedtest-cli** replaces Speedtest Tracker. Speedtest Tracker is a Laravel app.
-Its queue worker and PHP-FPM pool held 155 MiB (peak 212 MiB) all day for 4 tests.
+**speedtest-cli** replaced Speedtest Tracker on 2026-10-09. Speedtest Tracker is
+a Laravel app. Its queue worker and PHP-FPM pool held 155 MiB (peak 212 MiB) all
+day for 4 tests. Its compose file is in
+`compose-files/speedtest-docker-compose.yml.bak`.
 speedtest-cli is Alpine, busybox `crond` and the same Ookla CLI 1.2.0. It
 idles at under 1 MiB (measured 2026-10-09).
 
-- The schedule is `5 0,6,12,18 * * *` (in `speedtest-cli/crontab`). The `:05`
-  keeps it clear of Speedtest Tracker's `:00` run while both are up.
+- The schedule is `5 0,6,12,18 * * *` (in `speedtest-cli/crontab`).
 - Each run tests one of the 5 off-net du servers, in random order. If a
   server fails, the script tries the next one.
 - Results are the raw Ookla JSON, one per line, in

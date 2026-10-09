@@ -14,7 +14,6 @@ services:
       - HOST_TS_IP=${HOST_TS_IP}
       - ADGUARD_USERNAME=${ADGUARD_USERNAME}
       - ADGUARD_PASSWORD=${ADGUARD_PASSWORD}
-      - SPEEDTEST_API_TOKEN=${SPEEDTEST_API_TOKEN}
     volumes:
       - ./glance/config:/app/config
       - ./glance/assets:/app/assets
