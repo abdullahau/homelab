@@ -49,7 +49,18 @@ data
 └── shows
 ```
 
-Bulk media also lives on the external USB disk at `/mnt/hdd`.
+Put media on a second disk if the root disk is small. Mount the disk on the
+host, then bind-mount it into each container that needs it.
+
+On this host, an external USB disk mounts at `/mnt/hdd`. Plex, Transmission,
+MediaMTX and Beszel bind it. A USB disk can mount after Docker starts. Then
+each container binds an empty folder, and writes land on the root disk. Two
+things prevent this here:
+
+- The fstab entry uses `nofail`, so the boot does not stop if the disk is
+  missing.
+- A guard script in the dotfiles repo restarts those containers when the disk
+  mounts. Each of them needs `restart: unless-stopped`.
 
 ## Running services
 
@@ -71,8 +82,11 @@ docker compose -f plex-docker-compose.yml up -d
 docker compose -f plex-docker-compose.yml down
 ```
 
-> `hysteria/hysteria-docker-compose.yml` runs on the Oracle VPS, not here.
-> `docker-manager.sh` globs top level only, so it never starts.
+`docker-manager.sh` reads top-level compose files only. Keep a service in a
+subfolder if it runs on another machine, so it never starts here.
+
+On this setup, `hysteria/` is a QUIC proxy for US internet access. It runs on
+an Oracle Cloud VPS, not on this host. See [hysteria/README.md](hysteria/README.md).
 
 ## Services
 
@@ -85,7 +99,6 @@ docker compose -f plex-docker-compose.yml down
 | Transmission | <http://homelab:9091> | BitTorrent |
 | MediaMTX | <http://homelab:8889/living-room/> | NVR, camera recording |
 | Beszel | <http://homelab:8090> | Host and container metrics |
-| Tautulli | <http://homelab:8181> | Plex activity and history |
 | speedtest-cli | Glance widget | Line speed test, 4 times a day |
 | Stremio | <http://homelab:11470> | Streaming server for Stremio clients |
 
@@ -102,33 +115,35 @@ host. To run Jellyfin in place of Plex, see
 create the account, click **Add System**, copy the token and key into
 `BESZEL_TOKEN` / `BESZEL_KEY` in `.env`, then start the agent.
 
-**Tautulli** asks for the Plex server during setup. Plex runs with
-`network_mode: host`, so enter the value of `HOST_LAN_IP`, port `32400`, SSL
-off. Do not use `localhost`.
+**MediaMTX** records an RTSP camera all the time and keeps 14 days. The camera
+credentials come from `CAMERA_USER`, `CAMERA_PASSWORD` and `CAMERA_HOST` in
+`.env`. Each camera is a path under `paths:` in
+`mediamtx/mediamtx.yml.template`. The path name is also the URL:
 
-**MediaMTX** records continuously and keeps 14 days. Camera credentials come
-from `CAMERA_USER` / `CAMERA_PASSWORD` / `CAMERA_HOST` in `.env`.
+- Live view (WebRTC): `http://<host>:8889/<path>/`
+- Live view (HLS, fallback): `http://<host>:8888/<path>/`
+- Recordings: the playback API at `:9996/list` and `:9996/get`
+- Control API: `127.0.0.1:9997` only
 
-Uses `network_mode: host`. On a bridge network, docker-proxy rewrote every
-client address to the bridge gateway, so the `ips:` allowlist in
-`mediamtx.yml` matched the public internet as readily as the LAN - the camera
-and its 14-day archive were readable from anywhere over IPv6. On the host,
-MediaMTX sees real source addresses. Verified 2026-09-30 from an off-site
-host: public IPv6 gets 401, tailnet gets 200. Do not move it back to a bridge.
+To add a camera, copy the path block, give it a new name, and run
+`./docker-manager.sh render`.
 
-Live view is MediaMTX's own WebRTC page at <http://homelab:8889/living-room/>
-(HLS on `:8888` is the fallback).
-`mediamtx-connect` was removed 2026-09-30 - with one camera its only real
-value was the recordings browser. The playback API (`:9996/list`,
-`:9996/get`) still serves the archive. Control API binds `127.0.0.1:9997`.
+On this host, there is one camera, at the path `living-room`.
+
+MediaMTX uses `network_mode: host`. On a bridge network, docker-proxy changes
+every client address to the bridge gateway. Then the `ips:` allowlist in
+`mediamtx.yml` cannot tell the LAN from the internet. On this host, that made
+the camera and its archive readable from the internet over IPv6. Fixed and
+verified on 2026-09-30: public IPv6 gets 401, the tailnet gets 200. Do not
+move MediaMTX back to a bridge.
 
 **speedtest-cli** runs an Ookla speed test 4 times a day and shows the result
 in Glance. It replaced Speedtest Tracker (155 MiB idle) on 2026-10-09 and
 idles at under 1 MiB.
 
 - The schedule is `5 0,6,12,18 * * *` (in `speedtest-cli/crontab`).
-- Each run tests one of the 5 off-net du servers, in random order. If a
-  server fails, the script tries the next one.
+- Each run tests one server from `SERVERS=` in `speedtest-cli/speedtest.sh`,
+  in random order. If a server fails, the script tries the next one.
 - Results are the raw Ookla JSON, one per line, in
   `speedtest-cli/data/history.jsonl`. The script deletes results older than
   30 days.
@@ -136,14 +151,21 @@ idles at under 1 MiB.
   the 30-day averages) from its own `/assets/` path. It needs no API token.
 - Run a test now: `docker exec speedtest-cli speedtest.sh`.
 
-The server list excludes e&'s own Ookla servers. They are on-net and report
-~935/500, but the real line is ~310/116. Excluded: 17336 Dubai, 33712 Sharjah,
-34238 Ajman, 34240 Fujairah, 28422 Abu Dhabi, 34239 Al Ain. Do not add them.
+Pick servers that your own ISP does not host. An ISP's own server is inside
+its network, so the test skips the internet and can read much too high. To
+list the servers near you:
 
-The server IDs are for the UAE. In another country, list the servers near you
-with `docker exec speedtest-cli speedtest -L --accept-license`. Then change
-`SERVERS=` in `speedtest-cli/speedtest.sh` and rebuild. Skip servers that your
-own ISP hosts, because they can read high.
+```bash
+docker exec speedtest-cli speedtest -L --accept-license --accept-gdpr
+```
+
+Change `SERVERS=`, then rebuild with
+`docker compose -f speedtest-docker-compose.yml up -d --build`.
+
+On this host, the ISP is e& (UAE). Its own servers read ~935/500, but the real
+line is ~310/116. So `SERVERS=` holds the 5 du servers only. Excluded e&
+servers: 17336 Dubai, 33712 Sharjah, 34238 Ajman, 34240 Fujairah, 28422 Abu
+Dhabi, 34239 Al Ain. Do not add them.
 
 ## Edge stack (cloudflared + Caddy)
 

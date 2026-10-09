@@ -104,12 +104,6 @@
               description: Metrics collector
               icon: sh:beszel
               hide: true
-            tautulli:
-              name: Tautulli
-              description: Plex activity & stats
-              url: http://homelab:8181
-              icon: sh:tautulli
-              hide: false
             cloudflared:
               name: Cloudflared
               description: Cloudflare tunnel client
