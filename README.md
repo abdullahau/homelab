@@ -119,12 +119,9 @@ Live view is MediaMTX's own WebRTC page at <http://homelab:8889/living-room/>
 value was the recordings browser. The playback API (`:9996/list`,
 `:9996/get`) still serves the archive. Control API binds `127.0.0.1:9997`.
 
-**speedtest-cli** replaced Speedtest Tracker on 2026-10-09. Speedtest Tracker is
-a Laravel app. Its queue worker and PHP-FPM pool held 155 MiB (peak 212 MiB) all
-day for 4 tests. Its compose file is in
-`compose-files/speedtest-docker-compose.yml.bak`.
-speedtest-cli is Alpine, busybox `crond` and the same Ookla CLI 1.2.0. It
-idles at under 1 MiB (measured 2026-10-09).
+**speedtest-cli** runs an Ookla speed test 4 times a day and shows the result
+in Glance. It replaced Speedtest Tracker (155 MiB idle) on 2026-10-09 and
+idles at under 1 MiB.
 
 - The schedule is `5 0,6,12,18 * * *` (in `speedtest-cli/crontab`).
 - Each run tests one of the 5 off-net du servers, in random order. If a
